@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Blindspot/Blindspot.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Blindspot.Tests/Blindspot.Tests.csproj" />
+  </Folder>
+</Solution>

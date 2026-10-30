@@ -45,6 +45,19 @@ public class DetectionTests
     }
 
     [Fact]
+    public void SingleLaptopScreenShares()
+    {
+        IReadOnlyList<Rect> laptop = [Screen1];
+        var chat = Teams("Chat | Person | Microsoft Teams", new(227, 104, 1465, 825));
+        var screenShare = Run([chat, Border(Screen1)], screens: laptop);
+        Assert.Equal(GuardKind.ChatExposed, screenShare.Kind);
+        Assert.True(screenShare.WholeScreen);
+        var chromeShare = Run([chat, Border(new(320, 137, 1368, 643))], screens: laptop);
+        Assert.Equal(GuardKind.SharingClear, chromeShare.Kind);
+        Assert.Equal(GuardKind.NotSharing, Run([chat], screens: laptop).Kind);
+    }
+
+    [Fact]
     public void ScreenShareOnLeftMonitorWithNegativeCoordinates()
     {
         // Layout seen on the test laptop: a monitor left of the primary one.

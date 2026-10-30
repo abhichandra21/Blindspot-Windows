@@ -309,12 +309,45 @@ A unit test passing is not proof. Check these with a real Teams share (a solo "M
 
 ## 12. Windows findings
 
-Fill this in during step zero.
+Observed on 2026-10-30 with new Teams on Windows 10 (10.0.19045), using `tools/list-windows.ps1`
+in a solo "Meet now" meeting. Setups: laptop screen alone (1920x1080, 100% scale) and three
+monitors (1920x1080 at -1920,0; 2560x1440 primary at 0,0; 2560x1440 at 2560,0; all 100% scale).
+Names in titles are replaced with placeholders.
 
-- Teams process name:
-- Share marker window (title, class, bounds during whole-screen share):
-- Share marker during single-window share:
-- Chat tab window title pattern:
-- Activity tab window title pattern:
-- Pop-out chat window titles:
+- Teams process name: `ms-teams` (two processes). The share border window belongs to a separate
+  `ms-teams` child process, so filter by process name, not by the main window's PID.
+- Share marker window (whole-screen share): class `ScreenBorderWindow`, empty title, bounds equal
+  to the shared monitor exactly (for example `0,0 1920x1080`, and `-1920,0 1920x1080` on a
+  monitor left of the primary). It exists only while sharing and disappears when the share stops.
+- Share marker during single-window share: the same `ScreenBorderWindow`, with bounds equal to
+  the shared window exactly. It follows the window when it moves or resizes. A maximized window
+  is `1920x1040` (screen height minus the taskbar), so a small match tolerance still separates it
+  from a whole-screen share. In EnumWindows order, the border sits directly above the shared
+  window (topmost during a whole-screen share).
+- Chat tab window title pattern: `Chat | <Person> | Microsoft Teams`, class `TeamsWebView`.
+- Activity tab window title pattern: not captured in these runs. Assumed to be
+  `Activity | ... | Microsoft Teams` by analogy with Chat; verify.
+- Pop-out chat window titles: `<Person> | Microsoft Teams`, class `TeamsWebView`. This has the same
+  shape as the meeting window (`<meeting name> | Microsoft Teams`).
+- Other Teams windows during a share: `Sharing control bar | Microsoft Teams` (small, topmost,
+  `WS_EX_NOACTIVATE`) and sometimes `Meeting compact view | <Person> | Microsoft Teams`.
+  Starting a share minimizes the main Teams window. Minimized windows report bounds near
+  `-32000,-32000`.
 - Anything else surprising:
+  - Pop-out chats cannot be told apart from the meeting window using Win32 attributes. Both have
+    style `0x14CF0000`, extended style `0x00000100`, no owner, the same process, and the same
+    first-level children (`TeamsOverlay;Chrome_WidgetWin_0`). Their UI Automation names equal
+    their titles, and their AutomationIds are empty. The only difference found was in the UI
+    Automation tree: the meeting window contains a "Leave" button and chat windows do not.
+    This is not used for detection, for three reasons: the button names are localized, the tree
+    is built lazily (the first query can return no buttons), and each query takes about 40-120 ms
+    per window, every second.
+  - Overlap is not exposure on a window share: a window share sends only that window's content,
+    so a Chat window on top of the shared window is not in the share. Detection therefore warns
+    on a window share only when the shared window is the Chat window itself.
+  - A Teams reinstall did not change the process name, class names or title patterns.
+
+### Known limits
+
+- Pop-out chat windows are not detected; close them before sharing.
+- Only tested at 100% scale. Mixed-DPI setups are untested.

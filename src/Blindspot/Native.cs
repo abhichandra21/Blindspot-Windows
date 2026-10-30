@@ -22,6 +22,7 @@ static class Native
     [DllImport("user32.dll")] static extern bool IsIconic(nint hWnd);
     [DllImport("user32.dll")] static extern bool IsWindow(nint hWnd);
     [DllImport("user32.dll")] static extern bool ShowWindowAsync(nint hWnd, int command);
+    [DllImport("user32.dll")] public static extern bool DestroyIcon(nint hIcon);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(nint hWnd, StringBuilder text, int maxCount);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(nint hWnd, StringBuilder name, int maxCount);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(nint hWnd, out uint processId);

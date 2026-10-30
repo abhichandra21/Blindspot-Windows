@@ -1,3 +1,4 @@
+using System.Drawing.Drawing2D;
 using System.Media;
 
 namespace Blindspot;
@@ -123,9 +124,10 @@ sealed class TrayApp : IDisposable
         icon.Text = text.Length > 127 ? text[..127] : text;
         icon.Icon = s.Kind switch
         {
-            GuardKind.ChatExposed => SystemIcons.Error,
-            GuardKind.ObservationFailed => SystemIcons.Warning,
-            _ => SystemIcons.Shield,
+            GuardKind.ChatExposed => TrayIcons.Exposed,
+            GuardKind.ObservationFailed => TrayIcons.Failed,
+            GuardKind.Paused or GuardKind.ChecksDisabled => TrayIcons.Off,
+            _ => TrayIcons.Running,
         };
     }
 
@@ -199,5 +201,55 @@ sealed class Banner : Form
     {
         var area = screen.WorkingArea;
         Location = new Point(area.X + (area.Width - Width) / 2, area.Y + 12);
+    }
+}
+
+// Shield icons drawn at startup, sized for the tray at the primary screen's
+// scale: filled while checking, outline while paused or disabled, orange when
+// checks fail, red for a warning.
+static class TrayIcons
+{
+    public static readonly Icon Running = Shield(Color.FromArgb(0, 120, 212), filled: true);
+    public static readonly Icon Off = Shield(Color.FromArgb(128, 128, 128), filled: false);
+    public static readonly Icon Failed = Shield(Color.FromArgb(247, 99, 12), filled: true);
+    public static readonly Icon Exposed = Shield(Color.FromArgb(215, 38, 38), filled: true);
+
+    static Icon Shield(Color color, bool filled)
+    {
+        float dpi;
+        using (var screen = Graphics.FromHwnd(0)) dpi = screen.DpiX;
+        int size = (int)Math.Round(16 * dpi / 96);
+        using var bitmap = new Bitmap(size, size);
+        using (var g = Graphics.FromImage(bitmap))
+        using (var path = new GraphicsPath())
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            PointF P(float x, float y) => new(x * (size - 1), y * (size - 1));
+            path.AddLine(P(0.12f, 0.18f), P(0.5f, 0.04f));
+            path.AddLine(P(0.5f, 0.04f), P(0.88f, 0.18f));
+            path.AddBezier(P(0.88f, 0.18f), P(0.88f, 0.6f), P(0.72f, 0.84f), P(0.5f, 0.96f));
+            path.AddBezier(P(0.5f, 0.96f), P(0.28f, 0.84f), P(0.12f, 0.6f), P(0.12f, 0.18f));
+            path.CloseFigure();
+            if (filled)
+            {
+                using var brush = new SolidBrush(color);
+                g.FillPath(brush, path);
+            }
+            else
+            {
+                using var pen = new Pen(color, Math.Max(1.5f, size / 10f));
+                g.DrawPath(pen, path);
+            }
+        }
+        nint handle = bitmap.GetHicon();
+        try
+        {
+            using var temporary = Icon.FromHandle(handle);
+            return (Icon)temporary.Clone();
+        }
+        finally
+        {
+            Native.DestroyIcon(handle);
+        }
     }
 }

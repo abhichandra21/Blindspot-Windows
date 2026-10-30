@@ -13,12 +13,13 @@ static class Program
     }
 }
 
-// Tray icon, menu, the once-a-second check, and the warning (sound and
-// banner). Minimizing comes in a later build step.
+// Tray icon, menu, the once-a-second check, the warning (sound and banner),
+// and optional minimizing.
 sealed class TrayApp : IDisposable
 {
     readonly NotifyIcon icon = new();
     readonly ToolStripMenuItem statusItem = new() { Enabled = false };
+    readonly ToolStripMenuItem minimizeNoteItem = new() { Enabled = false, Visible = false };
     readonly ToolStripMenuItem pauseItem = new("Pause");
     readonly System.Windows.Forms.Timer timer = new() { Interval = Detection.PollIntervalMs };
     readonly Banner banner = new();
@@ -26,6 +27,7 @@ sealed class TrayApp : IDisposable
     SettingsForm? settingsForm;
     DateTime testWarningUntil;
     bool paused;
+    string? minimizeNote;
     GuardState state = GuardState.Of(GuardKind.NotSharing);
 
     public TrayApp()
@@ -33,6 +35,7 @@ sealed class TrayApp : IDisposable
         pauseItem.Click += (_, _) => TogglePause();
         var menu = new ContextMenuStrip();
         menu.Items.Add(statusItem);
+        menu.Items.Add(minimizeNoteItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(pauseItem);
         menu.Items.Add("Settings...", null, (_, _) => OpenSettings());
@@ -85,6 +88,10 @@ sealed class TrayApp : IDisposable
             testWarningUntil = default;
             if (!wasExposed && settings.PlaySound) SystemSounds.Exclamation.Play();
             banner.ShowOn($"Teams {Detection.TabName(state.Exposed[0])} may be visible in your screen share", state.SharedArea);
+            // After the warning, so a slow minimize never delays it. Retried on
+            // every check while the chat stays exposed.
+            var targets = settings.AutoMinimize ? state.AutoMinimizeTargets : [];
+            SetMinimizeNote(targets.Count == 0 ? null : Minimizing.Note(Minimizing.Minimize(targets, Native.Read, Native.Minimize)));
         }
         else if (state.Kind != GuardKind.NotSharing || DateTime.UtcNow >= testWarningUntil)
         {
@@ -92,6 +99,16 @@ sealed class TrayApp : IDisposable
             testWarningUntil = default;
             banner.Hide();
         }
+        if (state.Kind != GuardKind.ChatExposed) SetMinimizeNote(null);
+    }
+
+    void SetMinimizeNote(string? note)
+    {
+        if (note == minimizeNote) return;
+        minimizeNote = note;
+        minimizeNoteItem.Text = note ?? "";
+        minimizeNoteItem.Visible = note != null;
+        Show(state);
     }
 
     static IReadOnlyList<Rect>? ScreenBounds() => Screen.AllScreens.Select(s => ToRect(s.Bounds)).ToList();
@@ -100,8 +117,8 @@ sealed class TrayApp : IDisposable
 
     void Show(GuardState s)
     {
-        string text = s.StatusText;
-        statusItem.Text = text;
+        statusItem.Text = s.StatusText;
+        string text = minimizeNote == null ? s.StatusText : $"{s.StatusText}\n{minimizeNote}";
         // NotifyIcon.Text is limited to 127 characters.
         icon.Text = text.Length > 127 ? text[..127] : text;
         icon.Icon = s.Kind switch

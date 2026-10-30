@@ -14,10 +14,11 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
 
-  <!-- Detection.cs has no Windows-only code, so the tests compile it directly
-       and run on the Mac as well as Windows. -->
+  <!-- Detection.cs and Minimizing.cs have no Windows-only code, so the tests
+       compile them directly and run on the Mac as well as Windows. -->
   <ItemGroup>
     <Compile Include="../../src/Blindspot/Detection.cs" Link="Detection.cs" />
+    <Compile Include="../../src/Blindspot/Minimizing.cs" Link="Minimizing.cs" />
   </ItemGroup>
 
   <ItemGroup>

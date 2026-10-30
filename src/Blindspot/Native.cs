@@ -15,10 +15,13 @@ static class Native
     const int DWMWA_CLOAKED = 14;
     const int GWL_EXSTYLE = -20;
     const long WS_EX_TOOLWINDOW = 0x80;
+    const int SW_MINIMIZE = 6;
 
     [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc proc, nint lParam);
     [DllImport("user32.dll")] static extern bool IsWindowVisible(nint hWnd);
     [DllImport("user32.dll")] static extern bool IsIconic(nint hWnd);
+    [DllImport("user32.dll")] static extern bool IsWindow(nint hWnd);
+    [DllImport("user32.dll")] static extern bool ShowWindowAsync(nint hWnd, int command);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(nint hWnd, StringBuilder text, int maxCount);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(nint hWnd, StringBuilder name, int maxCount);
     [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(nint hWnd, out uint processId);
@@ -53,6 +56,13 @@ static class Native
         return new WindowInfo(hWnd, process, Title(hWnd), ClassName(hWnd), Bounds(hWnd),
             IsNormal: !IsIconic(hWnd) && !toolWindow && !cloaked);
     }
+
+    // The window as it is now, or null if it closed or is already minimized.
+    public static CurrentWindow? Read(nint hWnd) =>
+        IsWindow(hWnd) && !IsIconic(hWnd) ? new CurrentWindow(Title(hWnd), Bounds(hWnd)) : null;
+
+    // Posted rather than sent, so a busy Teams cannot hold up the check.
+    public static bool Minimize(nint hWnd) => ShowWindowAsync(hWnd, SW_MINIMIZE);
 
     public static string Title(nint hWnd)
     {

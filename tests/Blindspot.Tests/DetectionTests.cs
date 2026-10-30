@@ -45,6 +45,20 @@ public class DetectionTests
     }
 
     [Fact]
+    public void ScreenShareOnLeftMonitorWithNegativeCoordinates()
+    {
+        // Layout seen on the test laptop: a monitor left of the primary one.
+        IReadOnlyList<Rect> screens = [new(-1920, 0, 1920, 1080), new(0, 0, 2560, 1440), new(2560, 0, 2560, 1440)];
+        var left = new Rect(-1920, 0, 1920, 1080);
+        var chatOnPrimary = Teams("Chat | Person | Microsoft Teams", new(100, 100, 1274, 680));
+        var chatOnLeft = Teams("Chat | Person | Microsoft Teams", new(-1500, 100, 1274, 680));
+        Assert.Equal(GuardKind.SharingClear, Run([chatOnPrimary, Border(left)], screens: screens).Kind);
+        var s = Run([chatOnLeft, Border(left)], screens: screens);
+        Assert.Equal(GuardKind.ChatExposed, s.Kind);
+        Assert.True(s.WholeScreen);
+    }
+
+    [Fact]
     public void BorderAFewPixelsOffStillCountsAsWholeScreen()
     {
         var chat = Teams("Chat | Person | Microsoft Teams", new(100, 100, 800, 600));
@@ -72,6 +86,16 @@ public class DetectionTests
         Assert.Equal(GuardKind.ChatExposed, s.Kind);
         Assert.False(s.WholeScreen);
         Assert.Empty(s.AutoMinimizeTargets);
+    }
+
+    [Fact]
+    public void WindowShareWithChatOnTopOfSharedWindowIsClear()
+    {
+        // Seen on Windows: a window share sends only that window's content, so a
+        // chat covering most of it is not in the share.
+        var chat = Teams("Chat | Person | Microsoft Teams", new(2772, 279, 1274, 680));
+        var s = Run([chat, Border(new(2814, 423, 1368, 643))]);
+        Assert.Equal(GuardKind.SharingClear, s.Kind);
     }
 
     [Fact]

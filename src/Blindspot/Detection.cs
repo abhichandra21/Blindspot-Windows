@@ -62,17 +62,19 @@ public static class Detection
     public static readonly string[] AllRiskyTabs = ["Chat", "Activity"];
     public const int PollIntervalMs = 1000;
 
-    // On Windows the border matches the shared screen exactly, so keep the slack
-    // small: a shared maximized window is only the taskbar height (about 40 px)
-    // short of its screen and must not count as a screen share.
-    public const int ScreenMatchSlackPixels = 8;
+    // On Windows the border matches the shared screen or window exactly, so keep
+    // the slack small: a shared maximized window is only the taskbar height
+    // (about 40 px) short of its screen and must not count as a screen share.
+    public const int BoundsMatchSlackPixels = 8;
+
+    public static bool SameBounds(Rect a, Rect b) =>
+        Math.Abs(a.X - b.X) < BoundsMatchSlackPixels
+        && Math.Abs(a.Y - b.Y) < BoundsMatchSlackPixels
+        && Math.Abs(a.Right - b.Right) < BoundsMatchSlackPixels
+        && Math.Abs(a.Bottom - b.Bottom) < BoundsMatchSlackPixels;
 
     public static bool IsWholeScreen(Rect rect, IReadOnlyList<Rect> screens) =>
-        screens.Any(s =>
-            Math.Abs(s.X - rect.X) < ScreenMatchSlackPixels
-            && Math.Abs(s.Y - rect.Y) < ScreenMatchSlackPixels
-            && Math.Abs(s.Right - rect.Right) < ScreenMatchSlackPixels
-            && Math.Abs(s.Bottom - rect.Bottom) < ScreenMatchSlackPixels);
+        screens.Any(s => SameBounds(s, rect));
 
     public static GuardState CurrentState(bool paused, IReadOnlyList<string> riskyTabs,
         Func<IReadOnlyList<WindowInfo>?> readWindows, Func<IReadOnlyList<Rect>?> readScreens)
@@ -92,14 +94,10 @@ public static class Detection
         bool wholeScreen = IsWholeScreen(shared, screens);
         var exposed = windows
             .Where(w => w.IsNormal && riskyTabs.Any(tab => w.Title.StartsWith(tab, StringComparison.Ordinal)))
-            .Where(w =>
-            {
-                var overlap = w.Bounds.Intersect(shared);
-                if (overlap.IsEmpty) return false;
-                // Screen share: any part of the chat on that screen is visible.
-                // Window share: only flag it if the shared window is the chat itself.
-                return wholeScreen || overlap.Area * 2 >= shared.Area;
-            })
+            // Screen share: any part of the chat on that screen is visible.
+            // Window share: only that window's content is sent, so flag the chat
+            // only if it is the shared window itself.
+            .Where(w => wholeScreen ? !w.Bounds.Intersect(shared).IsEmpty : SameBounds(w.Bounds, shared))
             .ToList();
         return exposed.Count == 0
             ? new GuardState(GuardKind.SharingClear, [], shared, wholeScreen)

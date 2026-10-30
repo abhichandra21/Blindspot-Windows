@@ -22,6 +22,9 @@ sealed class TrayApp : IDisposable
     readonly ToolStripMenuItem pauseItem = new("Pause");
     readonly System.Windows.Forms.Timer timer = new() { Interval = Detection.PollIntervalMs };
     readonly Banner banner = new();
+    readonly AppSettings settings = AppSettings.Load();
+    SettingsForm? settingsForm;
+    DateTime testWarningUntil;
     bool paused;
     GuardState state = GuardState.Of(GuardKind.NotSharing);
 
@@ -32,6 +35,7 @@ sealed class TrayApp : IDisposable
         menu.Items.Add(statusItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(pauseItem);
+        menu.Items.Add("Settings...", null, (_, _) => OpenSettings());
         menu.Items.Add("Quit", null, (_, _) => Application.Exit());
         icon.ContextMenuStrip = menu;
         icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) TogglePause(); };
@@ -48,20 +52,44 @@ sealed class TrayApp : IDisposable
         Check();
     }
 
+    void OpenSettings()
+    {
+        if (settingsForm == null || settingsForm.IsDisposed)
+            settingsForm = new SettingsForm(settings, Check, ShowTestWarning);
+        settingsForm.Show();
+        settingsForm.Activate();
+    }
+
+    // Shows the banner and plays the sound with sample text. Never minimizes.
+    // Returns why nothing was shown, or null.
+    string? ShowTestWarning()
+    {
+        Check();
+        if (Detection.TestWarningBlocker(state.Kind) is string reason) return reason;
+        if (!banner.ShowOn("Test: Teams Chat may be visible in your screen share", default))
+            return "No screen available to show the test banner on.";
+        if (settings.PlaySound) SystemSounds.Exclamation.Play();
+        testWarningUntil = DateTime.UtcNow.AddMilliseconds(Detection.TestWarningMs);
+        return null;
+    }
+
     void Check()
     {
         bool wasExposed = state.Kind == GuardKind.ChatExposed;
-        state = Detection.CurrentState(paused, Detection.AllRiskyTabs, Native.VisibleWindows, ScreenBounds);
+        state = Detection.CurrentState(paused, settings.RiskyTabs, Native.VisibleWindows, ScreenBounds);
         Show(state);
         if (state.Kind == GuardKind.ChatExposed)
         {
             // Bounds overlap only, so a chat hidden behind another window still
             // counts. Hence "may be".
-            if (!wasExposed) SystemSounds.Exclamation.Play();
+            testWarningUntil = default;
+            if (!wasExposed && settings.PlaySound) SystemSounds.Exclamation.Play();
             banner.ShowOn($"Teams {Detection.TabName(state.Exposed[0])} may be visible in your screen share", state.SharedArea);
         }
-        else
+        else if (state.Kind != GuardKind.NotSharing || DateTime.UtcNow >= testWarningUntil)
         {
+            // Any change away from "not sharing" ends a test warning at once.
+            testWarningUntil = default;
             banner.Hide();
         }
     }
@@ -88,6 +116,7 @@ sealed class TrayApp : IDisposable
     {
         timer.Dispose();
         banner.Dispose();
+        settingsForm?.Dispose();
         icon.Visible = false;
         icon.Dispose();
     }

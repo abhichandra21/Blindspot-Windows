@@ -104,6 +104,20 @@ public static class Detection
             : new GuardState(GuardKind.ChatExposed, exposed, shared, wholeScreen);
     }
 
+    public const int TestWarningMs = 3000;
+
+    // The test warning is shown only while checks are running and see no Teams
+    // share, so a share that starts afterwards changes the state and hides it.
+    // Returns why it can't be shown, or null.
+    public static string? TestWarningBlocker(GuardKind kind) => kind switch
+    {
+        GuardKind.NotSharing => null,
+        GuardKind.ChatExposed => "A real warning is showing.",
+        GuardKind.SharingClear => "Stop sharing to show a test warning.",
+        GuardKind.Paused or GuardKind.ChecksDisabled => "Resume checks to show a test warning.",
+        _ => "Can't show a test warning without confirming no screen is being shared.",
+    };
+
     public static string TabName(WindowInfo w)
     {
         int i = w.Title.IndexOf(" |", StringComparison.Ordinal);

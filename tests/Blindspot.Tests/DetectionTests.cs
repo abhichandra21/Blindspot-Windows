@@ -191,6 +191,14 @@ public class DetectionTests
     }
 
     [Fact]
+    public void TestWarningOnlyWhenChecksRunAndNothingIsShared()
+    {
+        Assert.Null(Detection.TestWarningBlocker(GuardKind.NotSharing));
+        foreach (var kind in Enum.GetValues<GuardKind>().Where(k => k != GuardKind.NotSharing))
+            Assert.NotNull(Detection.TestWarningBlocker(kind));
+    }
+
+    [Fact]
     public void TabNameIsTitleBeforeFirstBar()
     {
         Assert.Equal("Chat", Detection.TabName(Teams("Chat | Person | Microsoft Teams", default)));

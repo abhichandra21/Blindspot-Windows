@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - run: dotnet test Blindspot.slnx
+      - run: dotnet build src/Blindspot -c Release
+
+  # Publishes both zips and attaches them to a GitHub release for a version tag.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Publish
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          foreach ($rid in 'win-x64', 'win-arm64') {
+            dotnet publish src/Blindspot -c Release -r $rid --self-contained true `
+              -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None `
+              -p:Version=$version -o out/$rid
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            Compress-Archive -Path out/$rid/* -DestinationPath "Blindspot-$rid.zip"
+          }
+      - name: Create release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create $env:GITHUB_REF_NAME Blindspot-win-x64.zip Blindspot-win-arm64.zip --repo $env:GITHUB_REPOSITORY --title $env:GITHUB_REF_NAME --generate-notes

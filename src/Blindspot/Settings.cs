@@ -55,6 +55,8 @@ sealed class SettingsForm : Form
     readonly AppSettings settings;
     readonly Action onChange;
     readonly Label errorLabel = new() { AutoSize = true, ForeColor = Color.Firebrick };
+    readonly CheckBox login = new() { Text = "Start at login", AutoSize = true };
+    bool refreshingLogin;
 
     public SettingsForm(AppSettings settings, Action onChange, Func<string?> onTestWarning)
     {
@@ -70,8 +72,8 @@ sealed class SettingsForm : Form
         AutoScaleDimensions = new SizeF(96f, 96f);
         ClientSize = new Size(470, 330);
 
-        var login = new CheckBox { Text = "Start at login", AutoSize = true, Checked = LoginItem.IsEnabled() };
-        login.CheckedChanged += (_, _) => Report(LoginItem.SetEnabled(login.Checked));
+        RefreshLogin();
+        login.CheckedChanged += (_, _) => { if (!refreshingLogin) Report(LoginItem.SetEnabled(login.Checked)); };
         var sound = new CheckBox { Text = "Play warning sound", AutoSize = true, Checked = settings.PlaySound };
         sound.CheckedChanged += (_, _) => { settings.PlaySound = sound.Checked; Changed(); };
         var testResult = new Label { AutoSize = true, ForeColor = SystemColors.GrayText };
@@ -124,6 +126,21 @@ sealed class SettingsForm : Form
         tabs.TabPages.Add(Tab("Detection", detection));
         tabs.TabPages.Add(Tab("About", about));
         Controls.Add(tabs);
+    }
+
+    // The Run value can change while the window stays open (an uninstall,
+    // another copy of the app), so show what is really there.
+    protected override void OnActivated(EventArgs e)
+    {
+        base.OnActivated(e);
+        RefreshLogin();
+    }
+
+    void RefreshLogin()
+    {
+        refreshingLogin = true;
+        login.Checked = LoginItem.IsEnabled();
+        refreshingLogin = false;
     }
 
     static Icon AppIcon(int size)

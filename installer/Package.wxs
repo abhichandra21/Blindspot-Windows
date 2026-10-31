@@ -14,7 +14,7 @@
     </Feature>
 
     <!-- Start the tray app when the install or upgrade finishes. -->
-    <CustomAction Id="LaunchApp" FileRef="BlindspotExe" ExeCommand="" Return="asyncNoWait" />
+    <CustomAction Id="LaunchApp" FileRef="BlindspotExe" ExeCommand="--installed" Return="asyncNoWait" />
     <!-- On a real uninstall (not an upgrade), remove the start-at-login entry the app may have added. -->
     <CustomAction Id="RemoveLoginItem" FileRef="BlindspotExe" ExeCommand="--remove-login-item"
                   Execute="deferred" Impersonate="yes" Return="ignore" />
@@ -38,11 +38,9 @@
         <RegistryValue Root="HKCU" Key="Software\Blindspot" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
         <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
         <RemoveFolder Id="RemoveProgramsFolder" Directory="ProgramsFolder" On="uninstall" />
-      </Component>
-      <Component Id="StartMenuShortcut" Directory="ProgramMenuFolder">
-        <Shortcut Id="StartMenu" Name="Blindspot" Description="Warns when a Teams chat may be visible in your screen share"
+        <Shortcut Id="StartMenu" Directory="ProgramMenuFolder" Name="Blindspot"
+                  Description="Warns when a Teams chat may be visible in your screen share"
                   Target="[#BlindspotExe]" WorkingDirectory="INSTALLFOLDER" Icon="BlindspotIcon" />
-        <RegistryValue Root="HKCU" Key="Software\Blindspot" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </ComponentGroup>
   </Fragment>

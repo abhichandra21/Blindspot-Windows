@@ -18,7 +18,7 @@ static class Program
         using var single = new Mutex(true, @"Local\Blindspot", out bool first);
         if (!first) return;
         ApplicationConfiguration.Initialize();
-        using var app = new TrayApp();
+        using var app = new TrayApp(justInstalled: args.Contains("--installed"));
         // Lets the installer's Restart Manager close the app before replacing it,
         // and removes the tray icon cleanly at sign-out.
         Microsoft.Win32.SystemEvents.SessionEnded += (_, _) => Application.Exit();
@@ -43,7 +43,7 @@ sealed class TrayApp : IDisposable
     string? minimizeNote;
     GuardState state = GuardState.Of(GuardKind.NotSharing);
 
-    public TrayApp()
+    public TrayApp(bool justInstalled)
     {
         pauseItem.Click += (_, _) => TogglePause();
         var menu = new ContextMenuStrip();
@@ -59,6 +59,11 @@ sealed class TrayApp : IDisposable
         Check();
         icon.Visible = true;
         timer.Start();
+        // The install itself is silent, so say where the app went.
+        if (justInstalled)
+            icon.ShowBalloonTip(5000, "Blindspot is running",
+                "It lives in the tray and warns you if a Teams chat may be visible in your screen share. Right-click the shield for Settings.",
+                ToolTipIcon.None);
     }
 
     void TogglePause()

@@ -8,6 +8,8 @@
     <AcceptEula>wix7</AcceptEula>
     <!-- Set by CI: the app version and the folder holding the published Blindspot.exe. -->
     <Version Condition=" '$(Version)' == '' ">0.0.1</Version>
+    <!-- Per-user files are the point of this package. -->
+    <SuppressIces>ICE91</SuppressIces>
     <DefineConstants>Version=$(Version);PublishDir=$(PublishDir)</DefineConstants>
   </PropertyGroup>
 

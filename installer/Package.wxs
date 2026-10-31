@@ -1,7 +1,7 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <!-- Per-user install: no admin prompt. Installs into
        %LOCALAPPDATA%\Programs\Blindspot and adds a Start menu entry. -->
-  <Package Name="Blindspot" Manufacturer="Blindspot" Version="$(var.Version)"
+  <Package Name="Blindspot" Manufacturer="Abhishek Chandra" Version="$(var.Version)"
            UpgradeCode="54FAC7D3-982D-4680-AED6-86444914D12B" Scope="perUser">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Blindspot is already installed." />
     <MediaTemplate EmbedCab="yes" />

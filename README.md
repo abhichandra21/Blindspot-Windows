@@ -93,3 +93,7 @@ dotnet run --project src/Blindspot
 The unit tests also run on a Mac.
 [BUILD-GUIDE.md](BUILD-GUIDE.md) explains how detection works and what was found on Windows.
 Pushing a `v*` tag builds both MSIs and zips and attaches them to a GitHub release.
+
+## License
+
+[MIT](LICENSE).

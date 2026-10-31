@@ -12,6 +12,8 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationIcon>..\..\assets\Blindspot.ico</ApplicationIcon>
     <Product>Blindspot</Product>
+    <Company>Abhishek Chandra</Company>
+    <Copyright>Copyright (c) 2026 Abhishek Chandra</Copyright>
     <Description>Warns when a Teams chat may be visible in your screen share</Description>
   </PropertyGroup>
 

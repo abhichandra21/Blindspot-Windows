@@ -20,7 +20,9 @@ jobs:
         with:
           global-json-file: global.json
       - run: dotnet test Blindspot.slnx
-      - run: dotnet build src/Blindspot -c Release
+      - name: Build exe and MSI
+        shell: pwsh
+        run: ./installer/build.ps1 -Version 0.0.1 -Rid win-x64
 
   # Publishes both zips and attaches them to a GitHub release for a version tag.
   release:
@@ -36,19 +38,13 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
-      - name: Publish
+      - name: Build exe, zip and MSI
         shell: pwsh
         run: |
           $version = $env:GITHUB_REF_NAME.TrimStart('v')
-          foreach ($rid in 'win-x64', 'win-arm64') {
-            dotnet publish src/Blindspot -c Release -r $rid --self-contained true `
-              -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -p:DebugType=None `
-              -p:Version=$version -o out/$rid
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            Compress-Archive -Path out/$rid/* -DestinationPath "Blindspot-$rid.zip"
-          }
+          foreach ($rid in 'win-x64', 'win-arm64') { ./installer/build.ps1 -Version $version -Rid $rid }
       - name: Create release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create $env:GITHUB_REF_NAME Blindspot-win-x64.zip Blindspot-win-arm64.zip --repo $env:GITHUB_REPOSITORY --title $env:GITHUB_REF_NAME --generate-notes
+        run: gh release create $env:GITHUB_REF_NAME (Get-Item out/*.msi, out/*.zip) --repo $env:GITHUB_REPOSITORY --title $env:GITHUB_REF_NAME --generate-notes

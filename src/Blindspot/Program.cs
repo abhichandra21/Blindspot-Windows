@@ -6,10 +6,22 @@ namespace Blindspot;
 static class Program
 {
     [STAThread]
-    static void Main()
+    static void Main(string[] args)
     {
+        // Run by the uninstaller so start at login doesn't point at a deleted exe.
+        if (args.Contains("--remove-login-item"))
+        {
+            LoginItem.SetEnabled(false);
+            return;
+        }
+        // One tray icon per user session, even if started again from the Start menu.
+        using var single = new Mutex(true, @"Local\Blindspot", out bool first);
+        if (!first) return;
         ApplicationConfiguration.Initialize();
         using var app = new TrayApp();
+        // Lets the installer's Restart Manager close the app before replacing it,
+        // and removes the tray icon cleanly at sign-out.
+        Microsoft.Win32.SystemEvents.SessionEnded += (_, _) => Application.Exit();
         Application.Run();
     }
 }

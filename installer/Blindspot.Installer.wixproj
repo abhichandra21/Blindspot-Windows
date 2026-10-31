@@ -1,0 +1,14 @@
+<Project Sdk="WixToolset.Sdk/7.0.1">
+
+  <PropertyGroup>
+    <OutputName>Blindspot</OutputName>
+    <!-- The project owner accepted the WiX Open Source Maintenance Fee EULA
+         (https://wixtoolset.org/osmf/). Blindspot is a non-revenue hobby
+         project, so no fee applies. -->
+    <AcceptEula>wix7</AcceptEula>
+    <!-- Set by CI: the app version and the folder holding the published Blindspot.exe. -->
+    <Version Condition=" '$(Version)' == '' ">0.0.1</Version>
+    <DefineConstants>Version=$(Version);PublishDir=$(PublishDir)</DefineConstants>
+  </PropertyGroup>
+
+</Project>

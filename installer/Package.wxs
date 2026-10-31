@@ -1,0 +1,47 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!-- Per-user install: no admin prompt. Installs into
+       %LOCALAPPDATA%\Programs\Blindspot and adds a Start menu entry. -->
+  <Package Name="Blindspot" Manufacturer="Blindspot" Version="$(var.Version)"
+           UpgradeCode="54FAC7D3-982D-4680-AED6-86444914D12B" Scope="perUser">
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Blindspot is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <Feature Id="Main">
+      <ComponentGroupRef Id="AppComponents" />
+    </Feature>
+
+    <!-- Start the tray app when the install or upgrade finishes. -->
+    <CustomAction Id="LaunchApp" FileRef="BlindspotExe" ExeCommand="" Return="asyncNoWait" />
+    <!-- On a real uninstall (not an upgrade), remove the start-at-login entry the app may have added. -->
+    <CustomAction Id="RemoveLoginItem" FileRef="BlindspotExe" ExeCommand="--remove-login-item"
+                  Execute="deferred" Impersonate="yes" Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="RemoveLoginItem" Before="RemoveFiles" Condition='REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE' />
+      <Custom Action="LaunchApp" After="InstallFinalize" Condition="NOT REMOVE" />
+    </InstallExecuteSequence>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="Blindspot" />
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Per-user components need a registry key path and explicit folder removal. -->
+    <ComponentGroup Id="AppComponents">
+      <Component Id="App" Directory="INSTALLFOLDER" Guid="44DFFC20-6450-44E4-ADCB-1F8A19A38A89">
+        <File Id="BlindspotExe" Source="$(var.PublishDir)Blindspot.exe" KeyPath="no" />
+        <RegistryValue Root="HKCU" Key="Software\Blindspot" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+        <RemoveFolder Id="RemoveInstallFolder" On="uninstall" />
+        <RemoveFolder Id="RemoveProgramsFolder" Directory="ProgramsFolder" On="uninstall" />
+      </Component>
+      <Component Id="StartMenuShortcut" Directory="ProgramMenuFolder">
+        <Shortcut Id="StartMenu" Name="Blindspot" Description="Warns when a Teams chat may be visible in your screen share"
+                  Target="[#BlindspotExe]" WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKCU" Key="Software\Blindspot" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

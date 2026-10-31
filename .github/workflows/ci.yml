@@ -22,7 +22,9 @@ jobs:
       - run: dotnet test Blindspot.slnx
       - name: Build exe and MSI
         shell: pwsh
-        run: ./installer/build.ps1 -Version 0.0.1 -Rid win-x64
+        run: |
+          ./installer/build.ps1 -Version 0.0.1 -Rid win-x64
+          ./installer/build.ps1 -Version 0.0.1 -Rid win-arm64
 
   # Publishes both zips and attaches them to a GitHub release for a version tag.
   release:

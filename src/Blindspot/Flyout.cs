@@ -28,7 +28,7 @@ sealed class Flyout : Form
     readonly Label detail = new() { AutoSize = true, MaximumSize = new Size(TextWidth, 0), Margin = new Padding(0, 0, 0, 6) };
     readonly Label watching = new() { AutoSize = true, MaximumSize = new Size(TextWidth, 0), Margin = Padding.Empty };
     readonly Label switchLabel = new() { Text = "Check my Teams shares", AutoSize = true, Anchor = AnchorStyles.Left };
-    readonly ToggleSwitch checking = new() { Size = new Size(40, 20), Anchor = AnchorStyles.Right };
+    readonly ToggleSwitch checking = new() { Size = new Size(46, 26), Anchor = AnchorStyles.Right };
     readonly FooterRow settingsRow = new("\uE713", "Settings");
     readonly FooterRow quitRow = new("\uE7E8", "Quit Blindspot");
     readonly Panel topDivider = Divider(), bottomDivider = Divider();
@@ -266,6 +266,8 @@ sealed class ToggleSwitch : Control
     {
         SetStyle(ControlStyles.SupportsTransparentBackColor | ControlStyles.OptimizedDoubleBuffer
             | ControlStyles.AllPaintingInWmPaint | ControlStyles.Selectable, true);
+        // Two quick clicks are two flips, not a double-click.
+        SetStyle(ControlStyles.StandardDoubleClick, false);
         BackColor = Color.Transparent;
         Cursor = Cursors.Hand;
         TabStop = true;
@@ -291,7 +293,8 @@ sealed class ToggleSwitch : Control
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        float h = Height - 1, w = Width - 1;
+        float pad = LogicalToDeviceUnits(3), h = Height - 1 - 2 * pad, w = Width - 1 - 2 * pad;
+        g.TranslateTransform(pad, pad);
         using var track = new GraphicsPath();
         track.AddArc(0, 0, h, h, 90, 180);
         track.AddArc(w - h, 0, h, h, 270, 180);
@@ -311,8 +314,12 @@ sealed class ToggleSwitch : Control
             using var gray = new SolidBrush(Theme.SwitchOff);
             g.FillEllipse(gray, inset, inset, knob, knob);
         }
-        if (Focused) ControlPaint.DrawFocusRectangle(g, ClientRectangle);
+        g.ResetTransform();
+        if (Focused && ShowFocusCues) Shapes.DrawFocusRing(this, g, Theme);
     }
+
+    protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+    protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
 }
 
 // A full-width row with an icon and a label that highlights on hover, like
@@ -340,6 +347,7 @@ sealed class FooterRow : Control
         Margin = new Padding(4, 0, 4, 0);
         Cursor = Cursors.Hand;
         SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw, true);
+        SetStyle(ControlStyles.StandardDoubleClick, false);
     }
 
     protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hover = true; Invalidate(); }

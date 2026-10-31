@@ -59,7 +59,7 @@ sealed class SettingsForm : Form
     readonly AppSettings settings;
     readonly Action onChange;
     readonly Theme theme = Theme.CurrentForApps();
-    readonly Panel content = new() { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(28, 20, 28, 20) };
+    readonly Panel content = new() { Dock = DockStyle.Fill, AutoScroll = true, Padding = new Padding(28, 32, 28, 24) };
     readonly List<(NavItem Item, Control Page)> pages = [];
     readonly Label errorLabel = new() { AutoSize = true, ForeColor = Color.Firebrick, Margin = new Padding(0, 8, 0, 0) };
     readonly ToggleSwitch login = new();
@@ -83,14 +83,20 @@ sealed class SettingsForm : Form
 
         Styled(login);
         RefreshLogin();
-        login.Toggled += (_, _) => { if (!refreshingLogin) Report(LoginItem.SetEnabled(login.On)); };
+        login.Toggled += (_, _) =>
+        {
+            if (refreshingLogin) return;
+            Report(LoginItem.SetEnabled(login.On));
+            // Show what Windows actually has, even if the change failed.
+            RefreshLogin();
+        };
         var sound = Switch(settings.PlaySound, on => settings.PlaySound = on);
         var test = new PillButton("Show test warning", theme);
         var testCard = new Card(theme, "Test warning",
             "Shows the banner and plays the sound with sample text for a few seconds. Never minimizes anything.", test, CardWidth);
         test.Click += (_, _) => testCard.Detail = onTestWarning() ?? "Showing the test warning.";
         var general = Page("General",
-            new Card(theme, "Start at login", "Opens Blindspot automatically when you sign in to Windows.", login, CardWidth),
+            new Card(theme, "Start at login", "Opens Blindspot automatically when you sign in to Windows.", SwitchRow.For(login, theme), CardWidth),
             new Card(theme, "Warning sound", "Plays a short sound when a Teams chat may be visible in your share.", sound, CardWidth),
             testCard,
             Note("Click the tray shield for status and the pause switch. Right-click it for a quick menu."),
@@ -106,12 +112,12 @@ sealed class SettingsForm : Form
         var minimize = Switch(settings.AutoMinimize, on => settings.AutoMinimize = on);
         var detection = Page("Detection",
             Section("Watch these Teams tabs"),
-            new Card(theme, "Chat", "Warn when the Teams Chat tab is on the screen you are sharing.", Styled(tabSwitches["Chat"]), CardWidth),
-            new Card(theme, "Activity", "Warn when the Teams Activity tab is on the screen you are sharing.", Styled(tabSwitches["Activity"]), CardWidth),
+            new Card(theme, "Chat", "Warn when the Teams Chat tab is on the screen you are sharing.", SwitchRow.For(Styled(tabSwitches["Chat"]), theme), CardWidth),
+            new Card(theme, "Activity", "Warn when the Teams Activity tab is on the screen you are sharing.", SwitchRow.For(Styled(tabSwitches["Activity"]), theme), CardWidth),
             Section("When a chat is exposed"),
             new Card(theme, "Minimize exposed Teams windows",
                 "Minimizes those windows when a whole screen is shared. Never during a single-window share.", minimize, CardWidth),
-            new Card(theme, "Pop-out chats are not detected", "Close chat windows you popped out of Teams before you share.", null, CardWidth));
+            new Card(theme, "Pop-out chats are not detected", "Close chat windows you popped out of Teams before you share.", null, CardWidth, infoGlyph: true));
 
         var version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "dev";
         // The informational version can carry a +commit suffix.
@@ -147,6 +153,14 @@ sealed class SettingsForm : Form
         Select(pages[0].Item);
     }
 
+    // As tall as the tallest page, so no page scrolls and none sits in empty space.
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        int tallest = pages.Max(p => p.Page.GetPreferredSize(new Size(content.ClientSize.Width - content.Padding.Horizontal, 0)).Height);
+        ClientSize = new Size(ClientSize.Width, Math.Max(LogicalToDeviceUnits(360), tallest + content.Padding.Vertical));
+    }
+
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
@@ -166,6 +180,7 @@ sealed class SettingsForm : Form
         refreshingLogin = true;
         login.On = LoginItem.IsEnabled();
         login.Invalidate();
+        SwitchRow.Update(login);
         refreshingLogin = false;
     }
 
@@ -189,15 +204,15 @@ sealed class SettingsForm : Form
     ToggleSwitch Styled(ToggleSwitch toggle)
     {
         toggle.Theme = theme;
-        toggle.Size = new Size(40, 20);
+        toggle.Size = new Size(46, 26);
         return toggle;
     }
 
-    ToggleSwitch Switch(bool on, Action<bool> apply)
+    Control Switch(bool on, Action<bool> apply)
     {
         var toggle = Styled(new ToggleSwitch { On = on });
         toggle.Toggled += (_, _) => { apply(toggle.On); Changed(); };
-        return toggle;
+        return SwitchRow.For(toggle, theme);
     }
 
     Control AboutHeader(string version)
@@ -248,7 +263,7 @@ sealed class Card : Panel
     readonly Theme theme;
     readonly Label detail;
 
-    public Card(Theme theme, string title, string description, Control? action, int width)
+    public Card(Theme theme, string title, string description, Control? action, int width, bool infoGlyph = false)
     {
         this.theme = theme;
         AutoSize = true;
@@ -259,7 +274,7 @@ sealed class Card : Panel
         BackColor = theme.Window;
         SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
 
-        int textWidth = width - 32 - (action == null ? 0 : action.Width + 16);
+        int textWidth = width - 32 - (action == null ? 0 : action.Width + 16) - (infoGlyph ? 32 : 0);
         var text = new FlowLayoutPanel
         {
             AutoSize = true, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = Padding.Empty, BackColor = theme.Card,
@@ -271,16 +286,23 @@ sealed class Card : Panel
 
         var layout = new TableLayoutPanel
         {
-            Dock = DockStyle.Top, AutoSize = true, ColumnCount = 2, Margin = Padding.Empty, BackColor = theme.Card,
+            Dock = DockStyle.Top, AutoSize = true, ColumnCount = 3, Margin = Padding.Empty, BackColor = theme.Card,
         };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        layout.Controls.Add(text, 0, 0);
+        if (infoGlyph)
+            layout.Controls.Add(new Label
+            {
+                Text = "\uE946", Font = new Font("Segoe MDL2 Assets", 14f), ForeColor = theme.Accent, BackColor = theme.Card,
+                AutoSize = true, Anchor = AnchorStyles.Left, Margin = new Padding(0, 0, 12, 0),
+            }, 0, 0);
+        layout.Controls.Add(text, 1, 0);
         if (action != null)
         {
             action.Anchor = AnchorStyles.Right;
             action.Margin = new Padding(12, 0, 0, 0);
-            layout.Controls.Add(action, 1, 0);
+            layout.Controls.Add(action, 2, 0);
         }
         Controls.Add(layout);
     }
@@ -331,6 +353,7 @@ sealed class NavItem : Control
         Margin = new Padding(0, 0, 0, 2);
         Cursor = Cursors.Hand;
         SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw | ControlStyles.UserPaint, true);
+        SetStyle(ControlStyles.StandardDoubleClick, false);
     }
 
     protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hover = true; Invalidate(); }
@@ -377,6 +400,7 @@ sealed class PillButton : Control
         TabStop = true;
         SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw
             | ControlStyles.UserPaint | ControlStyles.Selectable, true);
+        SetStyle(ControlStyles.StandardDoubleClick, false);
         Size = new Size(TextRenderer.MeasureText(text, new Font("Segoe UI", 9.75f)).Width + 32, 32);
     }
 
@@ -401,12 +425,52 @@ sealed class PillButton : Control
         g.DrawPath(border, path);
         TextRenderer.DrawText(g, Text, Font, ClientRectangle, theme.Text,
             TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix);
-        if (Focused) ControlPaint.DrawFocusRectangle(g, Rectangle.Inflate(ClientRectangle, -3, -3));
+        if (Focused && ShowFocusCues) Shapes.DrawFocusRing(this, g, theme);
+    }
+
+    protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+    protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+}
+
+// A switch with "On" or "Off" to its left, like Windows 11 Settings.
+static class SwitchRow
+{
+    public static Control For(ToggleSwitch toggle, Theme theme)
+    {
+        var state = new Label
+        {
+            AutoSize = false, Size = new Size(30, 26), TextAlign = ContentAlignment.MiddleRight,
+            ForeColor = theme.Text, BackColor = theme.Card, Margin = new Padding(0, 0, 6, 0), Tag = "state",
+        };
+        var row = new FlowLayoutPanel { Size = new Size(84, 26), WrapContents = false, Margin = Padding.Empty, BackColor = theme.Card };
+        toggle.Margin = Padding.Empty;
+        row.Controls.Add(state);
+        row.Controls.Add(toggle);
+        toggle.Toggled += (_, _) => Update(toggle);
+        Update(toggle);
+        return row;
+    }
+
+    public static void Update(ToggleSwitch toggle)
+    {
+        if (toggle.Parent?.Controls.OfType<Label>().FirstOrDefault(l => "state".Equals(l.Tag)) is Label state)
+            state.Text = toggle.On ? "On" : "Off";
     }
 }
 
 static class Shapes
 {
+    // A rounded 2 px ring like Windows 11's keyboard focus, shown only after keyboard navigation.
+    public static void DrawFocusRing(Control control, Graphics g, Theme theme)
+    {
+        g.SmoothingMode = SmoothingMode.AntiAlias;
+        float width = control.LogicalToDeviceUnits(2);
+        using var pen = new Pen(theme.Text, width);
+        using var ring = RoundedRect(new RectangleF(width / 2, width / 2, control.Width - width - 1, control.Height - width - 1),
+            control.LogicalToDeviceUnits(control.Height / 2 > 10 ? 6 : 4));
+        g.DrawPath(pen, ring);
+    }
+
     public static GraphicsPath RoundedRect(RectangleF r, float radius)
     {
         var path = new GraphicsPath();

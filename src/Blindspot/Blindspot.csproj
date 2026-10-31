@@ -15,4 +15,9 @@
     <Description>Warns when a Teams chat may be visible in your screen share</Description>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- The exe icon only exposes one size at run time; this keeps every size for the windows. -->
+    <EmbeddedResource Include="..\..\assets\Blindspot.ico" LogicalName="Blindspot.ico" />
+  </ItemGroup>
+
 </Project>

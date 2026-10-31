@@ -159,6 +159,7 @@ sealed class TrayApp : IDisposable
 sealed class Banner : Form
 {
     const int WS_EX_TOPMOST = 0x8, WS_EX_TOOLWINDOW = 0x80, WS_EX_NOACTIVATE = 0x08000000;
+    const int CS_DROPSHADOW = 0x20000;
 
     readonly Label label = new()
     {
@@ -182,12 +183,20 @@ sealed class Banner : Form
 
     protected override bool ShowWithoutActivation => true;
 
+    // Rounded corners on Windows 11; Windows 10 ignores this and keeps square ones.
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        Native.UseRoundedCorners(Handle);
+    }
+
     protected override CreateParams CreateParams
     {
         get
         {
             var cp = base.CreateParams;
             cp.ExStyle |= WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE;
+            cp.ClassStyle |= CS_DROPSHADOW;
             return cp;
         }
     }
@@ -216,42 +225,41 @@ sealed class Banner : Form
     }
 }
 
-// Shield icons drawn at startup, sized for the tray at the primary screen's
-// scale: filled while checking, outline while paused or disabled, orange when
-// checks fail, red for a warning.
+// Tray icons drawn at startup in the app icon's style, a white shield on a
+// colored tile, sized for the tray at the primary screen's scale: blue while
+// checking, gray while paused or disabled, orange when checks fail, red for
+// a warning.
 static class TrayIcons
 {
-    public static readonly Icon Running = Shield(Color.FromArgb(0, 120, 212), filled: true);
-    public static readonly Icon Off = Shield(Color.FromArgb(128, 128, 128), filled: false);
-    public static readonly Icon Failed = Shield(Color.FromArgb(247, 99, 12), filled: true);
-    public static readonly Icon Exposed = Shield(Color.FromArgb(215, 38, 38), filled: true);
+    public static readonly Icon Running = Tile(Color.FromArgb(59, 122, 237), Color.FromArgb(23, 59, 158));
+    public static readonly Icon Off = Tile(Color.FromArgb(150, 150, 150), Color.FromArgb(105, 105, 105));
+    public static readonly Icon Failed = Tile(Color.FromArgb(250, 140, 40), Color.FromArgb(214, 90, 10));
+    public static readonly Icon Exposed = Tile(Color.FromArgb(235, 60, 50), Color.FromArgb(180, 25, 20));
 
-    static Icon Shield(Color color, bool filled)
+    static Icon Tile(Color top, Color bottom)
     {
         float dpi;
         using (var screen = Graphics.FromHwnd(0)) dpi = screen.DpiX;
         int size = (int)Math.Round(16 * dpi / 96);
         using var bitmap = new Bitmap(size, size);
         using (var g = Graphics.FromImage(bitmap))
-        using (var path = new GraphicsPath())
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            PointF P(float x, float y) => new(x * (size - 1), y * (size - 1));
-            path.AddLine(P(0.12f, 0.18f), P(0.5f, 0.04f));
-            path.AddLine(P(0.5f, 0.04f), P(0.88f, 0.18f));
-            path.AddBezier(P(0.88f, 0.18f), P(0.88f, 0.6f), P(0.72f, 0.84f), P(0.5f, 0.96f));
-            path.AddBezier(P(0.5f, 0.96f), P(0.28f, 0.84f), P(0.12f, 0.6f), P(0.12f, 0.18f));
-            path.CloseFigure();
-            if (filled)
-            {
-                using var brush = new SolidBrush(color);
-                g.FillPath(brush, path);
-            }
-            else
-            {
-                using var pen = new Pen(color, Math.Max(1.5f, size / 10f));
-                g.DrawPath(pen, path);
-            }
+            float s = size;
+            using (var tile = RoundedRect(new RectangleF(0, 0, s, s), 0.2f * s))
+            using (var gradient = new LinearGradientBrush(new PointF(0, 0), new PointF(0, s), top, bottom))
+                g.FillPath(gradient, tile);
+            // Same shield as assets/make-icon.swift, drawn larger to read at tray size.
+            PointF P(float x, float y) => new((0.5f + (x - 0.5f) * 1.3f) * s, (0.5f + (y - 0.5f) * 1.3f) * s);
+            using var shield = new GraphicsPath();
+            shield.AddBezier(P(0.5f, 0.22f), P(0.58f, 0.26f), P(0.66f, 0.29f), P(0.74f, 0.30f));
+            shield.AddLine(P(0.74f, 0.30f), P(0.74f, 0.48f));
+            shield.AddBezier(P(0.74f, 0.48f), P(0.74f, 0.64f), P(0.62f, 0.74f), P(0.5f, 0.80f));
+            shield.AddBezier(P(0.5f, 0.80f), P(0.38f, 0.74f), P(0.26f, 0.64f), P(0.26f, 0.48f));
+            shield.AddLine(P(0.26f, 0.48f), P(0.26f, 0.30f));
+            shield.AddBezier(P(0.26f, 0.30f), P(0.34f, 0.29f), P(0.42f, 0.26f), P(0.5f, 0.22f));
+            shield.CloseFigure();
+            g.FillPath(Brushes.White, shield);
         }
         nint handle = bitmap.GetHicon();
         try
@@ -263,5 +271,17 @@ static class TrayIcons
         {
             Native.DestroyIcon(handle);
         }
+    }
+
+    static GraphicsPath RoundedRect(RectangleF r, float radius)
+    {
+        var path = new GraphicsPath();
+        float d = radius * 2;
+        path.AddArc(r.X, r.Y, d, d, 180, 90);
+        path.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+        path.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+        path.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+        path.CloseFigure();
+        return path;
     }
 }

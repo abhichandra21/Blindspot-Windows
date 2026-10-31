@@ -29,6 +29,15 @@ static class Native
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern nint GetWindowLongPtr(nint hWnd, int index);
     [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(nint hWnd, int attribute, out RECT value, int size);
     [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(nint hWnd, int attribute, out int value, int size);
+    [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(nint hWnd, int attribute, ref int value, int size);
+
+    const int DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWCP_ROUND = 2;
+
+    public static void UseRoundedCorners(nint hWnd)
+    {
+        int round = DWMWCP_ROUND;
+        DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref round, sizeof(int));
+    }
 
     // Every visible top-level window, or null if the list could not be read.
     public static IReadOnlyList<WindowInfo>? VisibleWindows()

@@ -61,7 +61,7 @@ sealed class SettingsForm : Form
         this.settings = settings;
         this.onChange = onChange;
         Text = "Blindspot Settings";
-        Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!);
+        Icon = AppIcon(32);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -104,7 +104,14 @@ sealed class SettingsForm : Form
         var version = Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "dev";
         var link = new LinkLabel { Text = RepoUrl, AutoSize = true };
         link.LinkClicked += (_, _) => Process.Start(new ProcessStartInfo(RepoUrl) { UseShellExecute = true });
+        var appIcon = new PictureBox
+        {
+            Image = AppIcon(64).ToBitmap(),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            Size = new Size(64, 64),
+        };
         var about = Page(
+            appIcon,
             new Label { Text = "Blindspot", AutoSize = true, Font = new Font(Font.FontFamily, 12f, FontStyle.Bold) },
             Note($"Version {version}"),
             Note("Warns when a Teams Chat or Activity window may be visible in your Teams screen share."),
@@ -117,6 +124,12 @@ sealed class SettingsForm : Form
         tabs.TabPages.Add(Tab("Detection", detection));
         tabs.TabPages.Add(Tab("About", about));
         Controls.Add(tabs);
+    }
+
+    static Icon AppIcon(int size)
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Blindspot.ico")!;
+        return new Icon(stream, size, size);
     }
 
     void Changed()

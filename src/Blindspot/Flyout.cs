@@ -12,17 +12,27 @@ sealed class Flyout : Form
     const int WS_EX_TOOLWINDOW = 0x80, CS_DROPSHADOW = 0x20000;
     const int EdgeMargin = 12;
 
-    readonly PictureBox logo = new() { SizeMode = PictureBoxSizeMode.Zoom };
-    readonly Label title = new() { Text = "Blindspot", AutoSize = true };
-    readonly StatusDot dot = new();
-    readonly Label headline = new() { AutoSize = false };
-    readonly Label detail = new() { AutoSize = false };
-    readonly Label watching = new() { AutoSize = false };
-    readonly Label switchLabel = new() { Text = "Check my Teams shares", AutoSize = true };
-    readonly ToggleSwitch checking = new();
-    readonly FlatButton settingsButton = new("Settings");
-    readonly FlatButton quitButton = new("Quit");
-    readonly Panel topDivider = new(), bottomDivider = new();
+    const int PanelWidth = 320;
+    // Room for text beside the status dot.
+    const int TextWidth = 252;
+
+    readonly TableLayoutPanel root = new()
+    {
+        Dock = DockStyle.Top, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink,
+        ColumnCount = 1, Padding = new Padding(0, 0, 0, 6),
+    };
+    readonly PictureBox logo = new() { SizeMode = PictureBoxSizeMode.Zoom, Size = new Size(28, 28), Margin = new Padding(0, 0, 8, 0) };
+    readonly Label title = new() { Text = "Blindspot", AutoSize = true, Anchor = AnchorStyles.Left };
+    readonly StatusDot dot = new() { Size = new Size(12, 12), Margin = new Padding(0, 9, 10, 0) };
+    readonly Label headline = new() { AutoSize = true, MaximumSize = new Size(TextWidth, 0), Margin = new Padding(0, 0, 0, 2) };
+    readonly Label detail = new() { AutoSize = true, MaximumSize = new Size(TextWidth, 0), Margin = new Padding(0, 0, 0, 6) };
+    readonly Label watching = new() { AutoSize = true, MaximumSize = new Size(TextWidth, 0), Margin = Padding.Empty };
+    readonly Label switchLabel = new() { Text = "Check my Teams shares", AutoSize = true, Anchor = AnchorStyles.Left };
+    readonly ToggleSwitch checking = new() { Size = new Size(40, 20), Anchor = AnchorStyles.Right };
+    readonly FooterRow settingsRow = new("\uE713", "Settings");
+    readonly FooterRow quitRow = new("\uE7E8", "Quit Blindspot");
+    readonly Panel topDivider = Divider(), bottomDivider = Divider();
+    readonly System.Windows.Forms.Timer fadeIn = new() { Interval = 15 };
     Theme theme = Theme.Light;
 
     // When the panel last closed because focus moved away. A click on the tray
@@ -38,32 +48,54 @@ sealed class Flyout : Form
         KeyPreview = true;
         AutoScaleMode = AutoScaleMode.Dpi;
         AutoScaleDimensions = new SizeF(96f, 96f);
-        ClientSize = new Size(320, 240);
+        ClientSize = new Size(PanelWidth, 240);
         Font = new Font("Segoe UI", 9f);
-
-        logo.Image = appIcon.ToBitmap();
-        logo.SetBounds(16, 16, 28, 28);
         title.Font = new Font("Segoe UI Semibold", 11f);
-        title.Location = new Point(52, 19);
-        dot.SetBounds(18, 66, 10, 10);
         headline.Font = new Font("Segoe UI Semibold", 12f);
-        headline.SetBounds(36, 58, 270, 26);
-        detail.SetBounds(36, 86, 270, 36);
-        watching.SetBounds(36, 124, 270, 20);
-        topDivider.SetBounds(0, 152, 320, 1);
-        switchLabel.Location = new Point(16, 168);
-        checking.SetBounds(264, 166, 40, 20);
+        logo.Image = appIcon.ToBitmap();
         checking.AccessibleName = "Check my Teams shares";
-        bottomDivider.SetBounds(0, 198, 320, 1);
-        settingsButton.SetBounds(6, 204, 96, 30);
-        quitButton.SetBounds(218, 204, 96, 30);
+
+        var header = Row(new Padding(16, 14, 16, 8), logo, title);
+        var text = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = Padding.Empty,
+        };
+        text.Controls.AddRange([headline, detail, watching]);
+        var status = Row(new Padding(16, 2, 16, 14), dot, text);
+        var switchRow = new TableLayoutPanel
+        {
+            ColumnCount = 2, AutoSize = true, Dock = DockStyle.Top, Padding = new Padding(16, 10, 16, 10), Margin = Padding.Empty,
+        };
+        switchRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        switchRow.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        switchRow.Controls.Add(switchLabel, 0, 0);
+        switchRow.Controls.Add(checking, 1, 0);
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        foreach (Control c in new Control[] { header, status, topDivider, switchRow, bottomDivider, settingsRow, quitRow })
+        {
+            c.Dock = DockStyle.Top;
+            root.Controls.Add(c);
+        }
+        Controls.Add(root);
 
         checking.Toggled += (_, _) => togglePause();
-        settingsButton.Click += (_, _) => { Hide(); openSettings(); };
-        quitButton.Click += (_, _) => quit();
-        Controls.AddRange([logo, title, dot, headline, detail, watching, topDivider,
-            switchLabel, checking, bottomDivider, settingsButton, quitButton]);
+        settingsRow.Click += (_, _) => { Hide(); openSettings(); };
+        quitRow.Click += (_, _) => quit();
+        fadeIn.Tick += (_, _) =>
+        {
+            Opacity = Math.Min(1, Opacity + 0.15);
+            if (Opacity >= 1) fadeIn.Stop();
+        };
     }
+
+    static FlowLayoutPanel Row(Padding padding, params Control[] items)
+    {
+        var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Padding = padding, Margin = Padding.Empty };
+        row.Controls.AddRange(items);
+        return row;
+    }
+
+    static Panel Divider() => new() { Height = 1, Margin = new Padding(0, 0, 0, 4) };
 
     protected override CreateParams CreateParams
     {
@@ -106,11 +138,23 @@ sealed class Flyout : Form
     public void ShowNearTray()
     {
         ApplyTheme(Theme.Current());
+        Opacity = 0;
+        FitHeight();
         PlaceNearTray();
         Show();
-        // Moving to a screen with another scale resizes the panel, so place it again.
+        // Moving to a screen with another scale resizes the panel, so fit and place it again.
+        FitHeight();
         PlaceNearTray();
         Activate();
+        // A short fade, like the Windows flyouts.
+        fadeIn.Start();
+    }
+
+    // The width is fixed; the height follows the text, which wraps as needed.
+    void FitHeight()
+    {
+        root.PerformLayout();
+        ClientSize = new Size(LogicalToDeviceUnits(PanelWidth), root.Height);
     }
 
     public void UpdateState(GuardState state, AppSettings settings, string? minimizeNote)
@@ -123,17 +167,21 @@ sealed class Flyout : Form
         watching.Text = $"Watching {tabs} · Minimizing {(settings.AutoMinimize ? "on" : "off")}";
         checking.On = state.Kind != GuardKind.Paused;
         checking.Invalidate();
+        if (Visible)
+        {
+            FitHeight();
+            PlaceNearTray();
+        }
     }
 
     static (string Headline, string Detail) Describe(GuardState s) => s.Kind switch
     {
-        GuardKind.Paused => ("Paused", "Blindspot isn't checking your Teams shares."),
-        GuardKind.ChecksDisabled => ("Checks are off", "No Teams tabs are selected in Settings."),
-        GuardKind.ObservationFailed => ("Can't check Teams sharing", "Windows didn't return the window list. Blindspot keeps trying."),
-        GuardKind.NotSharing => ("Ready", "No Teams share right now. Blindspot warns you if a chat shows up in one."),
-        GuardKind.SharingClear => ("Your share looks clear", "No watched Teams windows are in the shared area."),
-        _ => ($"Teams {Detection.TabName(s.Exposed[0])} may be visible",
-              "It's in the area you are sharing. Minimize it or stop sharing."),
+        GuardKind.Paused => ("Paused", "Not checking your Teams shares."),
+        GuardKind.ChecksDisabled => ("Checks are off", "Choose Teams tabs to watch in Settings."),
+        GuardKind.ObservationFailed => ("Can't check sharing", "Windows didn't return the window list. Retrying."),
+        GuardKind.NotSharing => ("Ready", "Not sharing right now."),
+        GuardKind.SharingClear => ("Your share looks clear", "No watched Teams windows in the shared area."),
+        _ => ($"Teams {Detection.TabName(s.Exposed[0])} may be visible", "Minimize Teams or stop sharing."),
     };
 
     void ApplyTheme(Theme t)
@@ -144,7 +192,7 @@ sealed class Flyout : Form
         foreach (var label in new[] { detail, watching }) label.ForeColor = t.Secondary;
         topDivider.BackColor = bottomDivider.BackColor = t.Border;
         checking.Theme = t;
-        settingsButton.Theme = quitButton.Theme = t;
+        settingsRow.Theme = quitRow.Theme = t;
         Invalidate(true);
     }
 
@@ -258,33 +306,59 @@ sealed class ToggleSwitch : Control
     }
 }
 
-// A borderless button that highlights on hover, like flyout footer buttons.
-sealed class FlatButton : Label
+// A full-width row with an icon and a label that highlights on hover, like
+// the footer actions of other tray flyouts.
+sealed class FooterRow : Control
 {
+    readonly string glyph;
     bool hover;
     Theme theme = Theme.Light;
 
-    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)] public Theme Theme
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Theme Theme
     {
         get => theme;
-        set { theme = value; Restyle(); }
+        set { theme = value; Invalidate(); }
     }
 
-    public FlatButton(string text)
+    public FooterRow(string glyph, string text)
     {
+        this.glyph = glyph;
         Text = text;
-        AutoSize = false;
-        TextAlign = ContentAlignment.MiddleCenter;
-        Cursor = Cursors.Hand;
+        AccessibleName = text;
         AccessibleRole = AccessibleRole.PushButton;
+        Height = 36;
+        Margin = new Padding(4, 0, 4, 0);
+        Cursor = Cursors.Hand;
+        SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw, true);
     }
 
-    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hover = true; Restyle(); }
-    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = false; Restyle(); }
+    protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hover = true; Invalidate(); }
+    protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hover = false; Invalidate(); }
 
-    void Restyle()
+    protected override void OnPaint(PaintEventArgs e)
     {
-        BackColor = hover ? theme.Hover : theme.Background;
-        ForeColor = theme.Text;
+        var g = e.Graphics;
+        g.Clear(theme.Background);
+        if (hover)
+        {
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            using var brush = new SolidBrush(theme.Hover);
+            using var path = new GraphicsPath();
+            float r = LogicalToDeviceUnits(4), d = r * 2, w = Width - 1, h = Height - 1;
+            path.AddArc(0, 0, d, d, 180, 90);
+            path.AddArc(w - d, 0, d, d, 270, 90);
+            path.AddArc(w - d, h - d, d, d, 0, 90);
+            path.AddArc(0, h - d, d, d, 90, 90);
+            path.CloseFigure();
+            g.FillPath(brush, path);
+        }
+        // Segoe MDL2 Assets ships with Windows 10 and 11.
+        using var iconFont = new Font("Segoe MDL2 Assets", 10.5f);
+        var iconBox = new Rectangle(LogicalToDeviceUnits(12), 0, LogicalToDeviceUnits(20), Height);
+        var textBox = new Rectangle(LogicalToDeviceUnits(40), 0, Width - LogicalToDeviceUnits(44), Height);
+        var flags = TextFormatFlags.VerticalCenter | TextFormatFlags.NoPrefix;
+        TextRenderer.DrawText(g, glyph, iconFont, iconBox, theme.Text, flags | TextFormatFlags.HorizontalCenter);
+        TextRenderer.DrawText(g, Text, Font, textBox, theme.Text, flags | TextFormatFlags.Left);
     }
 }

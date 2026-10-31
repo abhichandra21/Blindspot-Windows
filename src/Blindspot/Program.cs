@@ -265,7 +265,8 @@ static class TrayIcons
         GuardKind.ChatExposed => Color.FromArgb(220, 45, 35),
         GuardKind.ObservationFailed => Color.FromArgb(240, 120, 25),
         GuardKind.Paused or GuardKind.ChecksDisabled => Color.FromArgb(135, 135, 135),
-        _ => Color.FromArgb(40, 100, 220),
+        // Green: checks are running and nothing is exposed.
+        _ => Color.FromArgb(16, 137, 62),
     };
 
     // The full app icon, embedded with every size; the exe icon only exposes one.

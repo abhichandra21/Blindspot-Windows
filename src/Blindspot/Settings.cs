@@ -61,6 +61,7 @@ sealed class SettingsForm : Form
         this.settings = settings;
         this.onChange = onChange;
         Text = "Blindspot Settings";
+        Icon = Icon.ExtractAssociatedIcon(Environment.ProcessPath!);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;

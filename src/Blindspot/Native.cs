@@ -33,6 +33,15 @@ static class Native
 
     const int DWMWA_WINDOW_CORNER_PREFERENCE = 33, DWMWCP_ROUND = 2;
 
+    const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+
+    // Dark title bar on Windows 10 20H1 and later and Windows 11; older builds ignore it.
+    public static void UseDarkTitleBar(nint hWnd, bool dark)
+    {
+        int on = dark ? 1 : 0;
+        DwmSetWindowAttribute(hWnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref on, sizeof(int));
+    }
+
     public static void UseRoundedCorners(nint hWnd)
     {
         int round = DWMWCP_ROUND;

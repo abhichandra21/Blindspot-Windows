@@ -211,20 +211,29 @@ sealed class Flyout : Form
     }
 }
 
-sealed record Theme(Color Background, Color Text, Color Secondary, Color Border, Color Hover, Color Accent, Color SwitchOff)
+// Colors for the flyout and the settings window, after Windows 11's own.
+sealed record Theme(Color Background, Color Text, Color Secondary, Color Border, Color Hover, Color Accent,
+    Color SwitchOff, Color Window, Color Card, Color CardBorder, bool IsDark)
 {
     public static readonly Theme Light = new(Color.FromArgb(249, 249, 249), Color.FromArgb(26, 26, 26),
         Color.FromArgb(96, 96, 96), Color.FromArgb(222, 222, 222), Color.FromArgb(234, 234, 234),
-        Color.FromArgb(0, 95, 184), Color.FromArgb(135, 135, 135));
+        Color.FromArgb(0, 95, 184), Color.FromArgb(135, 135, 135),
+        Color.FromArgb(243, 243, 243), Color.FromArgb(251, 251, 251), Color.FromArgb(229, 229, 229), false);
     public static readonly Theme Dark = new(Color.FromArgb(39, 39, 39), Color.FromArgb(255, 255, 255),
         Color.FromArgb(200, 200, 200), Color.FromArgb(64, 64, 64), Color.FromArgb(58, 58, 58),
-        Color.FromArgb(76, 194, 255), Color.FromArgb(160, 160, 160));
+        Color.FromArgb(76, 194, 255), Color.FromArgb(160, 160, 160),
+        Color.FromArgb(32, 32, 32), Color.FromArgb(43, 43, 43), Color.FromArgb(29, 29, 29), true);
 
-    // Tray flyouts follow the Windows mode (taskbar and Start), not the app mode.
-    public static Theme Current()
+    // Tray flyouts follow the Windows mode (taskbar and Start).
+    public static Theme Current() => Read("SystemUsesLightTheme");
+
+    // App windows follow the app mode.
+    public static Theme CurrentForApps() => Read("AppsUseLightTheme");
+
+    static Theme Read(string valueName)
     {
         using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-        return key?.GetValue("SystemUsesLightTheme") is int light && light == 0 ? Dark : Light;
+        return key?.GetValue(valueName) is int light && light == 0 ? Dark : Light;
     }
 }
 
@@ -292,7 +301,7 @@ sealed class ToggleSwitch : Control
         {
             using var fill = new SolidBrush(Theme.Accent);
             g.FillPath(fill, track);
-            using var white = new SolidBrush(Theme == Theme.Dark ? Color.Black : Color.White);
+            using var white = new SolidBrush(Theme.IsDark ? Color.Black : Color.White);
             g.FillEllipse(white, w - h + inset, inset, knob, knob);
         }
         else

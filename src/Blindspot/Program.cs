@@ -37,6 +37,7 @@ sealed class TrayApp : IDisposable
     readonly System.Windows.Forms.Timer timer = new() { Interval = Detection.PollIntervalMs };
     readonly Banner banner = new();
     readonly AppSettings settings = AppSettings.Load();
+    readonly Flyout flyout;
     SettingsForm? settingsForm;
     DateTime testWarningUntil;
     bool paused;
@@ -54,7 +55,8 @@ sealed class TrayApp : IDisposable
         menu.Items.Add("Settings...", null, (_, _) => OpenSettings());
         menu.Items.Add("Quit", null, (_, _) => Application.Exit());
         icon.ContextMenuStrip = menu;
-        icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) TogglePause(); };
+        flyout = new Flyout(TrayIcons.AppIcon(32), TogglePause, OpenSettings, Application.Exit);
+        icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ToggleFlyout(); };
         timer.Tick += (_, _) => Check();
         Check();
         icon.Visible = true;
@@ -64,6 +66,18 @@ sealed class TrayApp : IDisposable
             icon.ShowBalloonTip(5000, "Blindspot is running",
                 "It lives in the tray and warns you if a Teams chat may be visible in your screen share. Right-click the shield for Settings.",
                 ToolTipIcon.None);
+    }
+
+    void ToggleFlyout()
+    {
+        // Clicking the icon while the panel is open first takes focus from it,
+        // which already closed it; don't reopen it straight away.
+        if (flyout.Visible || DateTime.UtcNow - flyout.LastHidden < TimeSpan.FromMilliseconds(300))
+        {
+            flyout.Hide();
+            return;
+        }
+        flyout.ShowNearTray();
     }
 
     void TogglePause()
@@ -139,19 +153,15 @@ sealed class TrayApp : IDisposable
         string text = minimizeNote == null ? s.StatusText : $"{s.StatusText}\n{minimizeNote}";
         // NotifyIcon.Text is limited to 127 characters.
         icon.Text = text.Length > 127 ? text[..127] : text;
-        icon.Icon = s.Kind switch
-        {
-            GuardKind.ChatExposed => TrayIcons.Exposed,
-            GuardKind.ObservationFailed => TrayIcons.Failed,
-            GuardKind.Paused or GuardKind.ChecksDisabled => TrayIcons.Off,
-            _ => TrayIcons.Running,
-        };
+        icon.Icon = TrayIcons.For(s.Kind);
+        flyout.UpdateState(s, settings, minimizeNote);
     }
 
     public void Dispose()
     {
         timer.Dispose();
         banner.Dispose();
+        flyout.Dispose();
         settingsForm?.Dispose();
         icon.Visible = false;
         icon.Dispose();
@@ -240,6 +250,30 @@ static class TrayIcons
     public static readonly Icon Off = Tile(Color.FromArgb(150, 150, 150), Color.FromArgb(105, 105, 105));
     public static readonly Icon Failed = Tile(Color.FromArgb(250, 140, 40), Color.FromArgb(214, 90, 10));
     public static readonly Icon Exposed = Tile(Color.FromArgb(235, 60, 50), Color.FromArgb(180, 25, 20));
+
+    public static Icon For(GuardKind kind) => kind switch
+    {
+        GuardKind.ChatExposed => Exposed,
+        GuardKind.ObservationFailed => Failed,
+        GuardKind.Paused or GuardKind.ChecksDisabled => Off,
+        _ => Running,
+    };
+
+    // The same colors for the status dot in the flyout.
+    public static Color StateColor(GuardKind kind) => kind switch
+    {
+        GuardKind.ChatExposed => Color.FromArgb(220, 45, 35),
+        GuardKind.ObservationFailed => Color.FromArgb(240, 120, 25),
+        GuardKind.Paused or GuardKind.ChecksDisabled => Color.FromArgb(135, 135, 135),
+        _ => Color.FromArgb(40, 100, 220),
+    };
+
+    // The full app icon, embedded with every size; the exe icon only exposes one.
+    public static Icon AppIcon(int size)
+    {
+        using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("Blindspot.ico")!;
+        return new Icon(stream, size, size);
+    }
 
     static Icon Tile(Color top, Color bottom)
     {

@@ -63,7 +63,7 @@ sealed class SettingsForm : Form
         this.settings = settings;
         this.onChange = onChange;
         Text = "Blindspot Settings";
-        Icon = AppIcon(32);
+        Icon = TrayIcons.AppIcon(32);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -83,7 +83,7 @@ sealed class SettingsForm : Form
             Option(login, "Opens Blindspot automatically when you sign in to Windows."),
             Option(sound, "Plays a short sound when a Teams chat may be visible in your share."),
             Option(Row(test, testResult), "Shows the warning with sample text for a few seconds. Never minimizes anything."),
-            Note("Left-click the tray shield to pause or resume. Right-click it for Settings and Quit."),
+            Note("Click the tray shield for status and the pause switch. Right-click it for a quick menu."),
             errorLabel);
 
         var tabBoxes = Detection.AllRiskyTabs
@@ -108,7 +108,7 @@ sealed class SettingsForm : Form
         link.LinkClicked += (_, _) => Process.Start(new ProcessStartInfo(RepoUrl) { UseShellExecute = true });
         var appIcon = new PictureBox
         {
-            Image = AppIcon(64).ToBitmap(),
+            Image = TrayIcons.AppIcon(64).ToBitmap(),
             SizeMode = PictureBoxSizeMode.Zoom,
             Size = new Size(64, 64),
         };
@@ -141,12 +141,6 @@ sealed class SettingsForm : Form
         refreshingLogin = true;
         login.Checked = LoginItem.IsEnabled();
         refreshingLogin = false;
-    }
-
-    static Icon AppIcon(int size)
-    {
-        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("Blindspot.ico")!;
-        return new Icon(stream, size, size);
     }
 
     void Changed()

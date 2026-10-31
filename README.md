@@ -32,8 +32,9 @@ Put it in a folder you keep, since Start at login remembers where it is.
 
 ## Use it
 
-- **Left-click** the shield to pause or resume.
-- **Right-click** for the current status, Settings and Quit.
+- **Click** the shield to open the Blindspot panel: what it sees right now, a switch to pause or resume checks, Settings and Quit.
+  It follows the Windows light or dark mode.
+- **Right-click** for a quick menu with the same actions.
 - Minimizing is off until you turn it on in **Settings > Detection**.
 - To see what a warning looks like, click **Show Test Warning** in **Settings > General**.
   It shows the banner and sound with sample text for a few seconds and never minimizes anything.
@@ -41,7 +42,7 @@ Put it in a folder you keep, since Start at login remembers where it is.
 
 ## What the shield says
 
-Hold the pointer over the shield, or right-click it, to read its status.
+Click the shield, hold the pointer over it, or right-click it to read its status.
 
 | Status | Shield |
 |---|---|

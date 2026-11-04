@@ -64,7 +64,7 @@ sealed class TrayApp : IDisposable
         // The install itself is silent, so say where the app went.
         if (justInstalled)
             icon.ShowBalloonTip(5000, "Blindspot is running",
-                "It lives in the tray and warns you if a Teams chat may be visible in your screen share. Right-click the shield for Settings.",
+                "It lives in the tray and warns you if a Teams chat may be visible in your screen share. Right-click the icon for Settings.",
                 ToolTipIcon.None);
     }
 
@@ -240,8 +240,8 @@ sealed class Banner : Form
     }
 }
 
-// Tray icons drawn at startup in the app icon's style, a white shield on a
-// colored tile, sized for the tray at the primary screen's scale: blue while
+// Tray icons drawn at startup in the app icon's style, a white display with
+// an eye on a colored tile, sized for the tray at the primary screen's scale: blue while
 // checking, gray while paused or disabled, orange when checks fail, red for
 // a warning.
 static class TrayIcons
@@ -289,17 +289,30 @@ static class TrayIcons
             using (var tile = RoundedRect(new RectangleF(0, 0, s, s), 0.2f * s))
             using (var gradient = new LinearGradientBrush(new PointF(0, 0), new PointF(0, s), top, bottom))
                 g.FillPath(gradient, tile);
-            // Same shield as assets/make-icon.swift, drawn larger to read at tray size.
-            PointF P(float x, float y) => new((0.5f + (x - 0.5f) * 1.3f) * s, (0.5f + (y - 0.5f) * 1.3f) * s);
-            using var shield = new GraphicsPath();
-            shield.AddBezier(P(0.5f, 0.22f), P(0.58f, 0.26f), P(0.66f, 0.29f), P(0.74f, 0.30f));
-            shield.AddLine(P(0.74f, 0.30f), P(0.74f, 0.48f));
-            shield.AddBezier(P(0.74f, 0.48f), P(0.74f, 0.64f), P(0.62f, 0.74f), P(0.5f, 0.80f));
-            shield.AddBezier(P(0.5f, 0.80f), P(0.38f, 0.74f), P(0.26f, 0.64f), P(0.26f, 0.48f));
-            shield.AddLine(P(0.26f, 0.48f), P(0.26f, 0.30f));
-            shield.AddBezier(P(0.26f, 0.30f), P(0.34f, 0.29f), P(0.42f, 0.26f), P(0.5f, 0.22f));
-            shield.CloseFigure();
-            g.FillPath(Brushes.White, shield);
+            // Same display and eye as assets/make-icon.swift at its smallest size,
+            // flipped because Windows coordinates run top-down.
+            const float k = 1.25f;
+            PointF P(float x, float y) => new((0.5f + (x - 0.5f) * k) * s, (0.5f + (0.5f - y) * k) * s);
+            using var pen = new Pen(Color.White, 0.075f * s) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            PointF topLeft = P(0.22f, 0.74f), bottomRight = P(0.78f, 0.36f);
+            using (var screenPath = RoundedRect(RectangleF.FromLTRB(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y), 0.05f * s))
+                g.DrawPath(pen, screenPath);
+            g.DrawLine(pen, P(0.40f, 0.25f), P(0.60f, 0.25f));
+
+            // Cubic control points at 4/3 of the height give a peak of exactly the height.
+            PointF c = P(0.5f, 0.55f);
+            float w = P(0.67f, 0).X - c.X, h = c.Y - P(0, 0.65f).Y;
+            using var eye = new GraphicsPath();
+            eye.AddBezier(new PointF(c.X - w, c.Y), new PointF(c.X - w / 2, c.Y - h * 4 / 3),
+                          new PointF(c.X + w / 2, c.Y - h * 4 / 3), new PointF(c.X + w, c.Y));
+            eye.AddBezier(new PointF(c.X + w, c.Y), new PointF(c.X + w / 2, c.Y + h * 4 / 3),
+                          new PointF(c.X - w / 2, c.Y + h * 4 / 3), new PointF(c.X - w, c.Y));
+            eye.CloseFigure();
+            g.FillPath(Brushes.White, eye);
+            // The pupil takes the tile's color, so it stays visible on the red tile too.
+            float r = 0.075f * s * k;
+            using (var pupil = new SolidBrush(bottom))
+                g.FillEllipse(pupil, c.X - r, c.Y - r, r * 2, r * 2);
         }
         nint handle = bitmap.GetHicon();
         try

@@ -20,7 +20,7 @@ Needs Windows 10 or 11 and the new Microsoft Teams.
    Windows may say **Windows protected your PC**, because the app is not code-signed.
    Click **More info**, then **Run anyway**.
 3. Blindspot installs for your user only, so it needs no admin rights.
-   It starts when the install finishes; look for the blue screen-with-an-eye icon in the tray.
+   It starts when the install finishes; look for the screen icon with an eye in the tray.
    If it's hidden, click the **^** arrow next to the clock and drag it onto the taskbar.
 4. To open it at sign-in, turn on **Start at login** in **Settings > General**.
 
@@ -46,13 +46,13 @@ Click the icon, hold the pointer over it, or right-click it to read its status.
 
 | Status | Icon |
 |---|---|
-| Paused | Gray |
-| Checks disabled: no Teams tabs selected | Gray |
-| Unable to check Teams sharing | Orange |
-| No Teams share detected | Blue |
-| Sharing; no watched Teams windows detected in the shared area | Blue |
-| Teams Chat may be visible in your share | Red |
-| Teams Activity may be visible in your share | Red |
+| Paused | Empty screen |
+| Checks disabled: no Teams tabs selected | Empty screen |
+| Unable to check Teams sharing | Empty screen, orange dot |
+| No Teams share detected | Filled screen |
+| Sharing; no watched Teams windows detected in the shared area | Filled screen |
+| Teams Chat may be visible in your share | Red filled screen |
+| Teams Activity may be visible in your share | Red filled screen |
 
 For whole-screen shares, when minimizing is on and it didn't happen, a second line says why:
 

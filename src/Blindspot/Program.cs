@@ -240,24 +240,34 @@ sealed class Banner : Form
     }
 }
 
-// Tray icons drawn at startup in the app icon's style, a white display with
-// an eye on a colored tile, sized for the tray at the primary screen's scale: blue while
-// checking, gray while paused or disabled, orange when checks fail, red for
-// a warning.
+// Tray icons in the Mac menu bar style: one screen outline that never changes,
+// filled or empty like a cup, so every state reads as the same app. Watching
+// fills the screen with an eye cut out of it; paused or disabled leaves it
+// empty; unable to check adds an orange dot; a warning turns it red. The ink
+// follows the light or dark taskbar.
 static class TrayIcons
 {
-    public static readonly Icon Running = Tile(Color.FromArgb(59, 122, 237), Color.FromArgb(23, 59, 158));
-    public static readonly Icon Off = Tile(Color.FromArgb(150, 150, 150), Color.FromArgb(105, 105, 105));
-    public static readonly Icon Failed = Tile(Color.FromArgb(250, 140, 40), Color.FromArgb(214, 90, 10));
-    public static readonly Icon Exposed = Tile(Color.FromArgb(235, 60, 50), Color.FromArgb(180, 25, 20));
+    static readonly Color Red = Color.FromArgb(235, 60, 50);
+    static readonly Color Orange = Color.FromArgb(250, 140, 40);
+    static readonly Dictionary<(GuardKind, bool), Icon> cache = [];
 
-    public static Icon For(GuardKind kind) => kind switch
+    // Read on every check, so a theme switch shows within a second.
+    public static Icon For(GuardKind kind)
     {
-        GuardKind.ChatExposed => Exposed,
-        GuardKind.ObservationFailed => Failed,
-        GuardKind.Paused or GuardKind.ChecksDisabled => Off,
-        _ => Running,
-    };
+        bool dark = Theme.Current().IsDark;
+        if (!cache.TryGetValue((kind, dark), out var icon))
+        {
+            Color ink = dark ? Color.White : Color.FromArgb(26, 26, 26);
+            cache[(kind, dark)] = icon = kind switch
+            {
+                GuardKind.ChatExposed => Draw(Red, filled: true, dot: false),
+                GuardKind.ObservationFailed => Draw(ink, filled: false, dot: true),
+                GuardKind.Paused or GuardKind.ChecksDisabled => Draw(ink, filled: false, dot: false),
+                _ => Draw(ink, filled: true, dot: false),
+            };
+        }
+        return icon;
+    }
 
     // The same colors for the status dot in the flyout.
     public static Color StateColor(GuardKind kind) => kind switch
@@ -276,7 +286,7 @@ static class TrayIcons
         return new Icon(stream, size, size);
     }
 
-    static Icon Tile(Color top, Color bottom)
+    static Icon Draw(Color ink, bool filled, bool dot)
     {
         float dpi;
         using (var screen = Graphics.FromHwnd(0)) dpi = screen.DpiX;
@@ -285,34 +295,50 @@ static class TrayIcons
         using (var g = Graphics.FromImage(bitmap))
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            float s = size;
-            using (var tile = RoundedRect(new RectangleF(0, 0, s, s), 0.2f * s))
-            using (var gradient = new LinearGradientBrush(new PointF(0, 0), new PointF(0, s), top, bottom))
-                g.FillPath(gradient, tile);
-            // Same display and eye as assets/make-icon.swift at its smallest size,
-            // flipped because Windows coordinates run top-down.
-            const float k = 1.25f;
-            PointF P(float x, float y) => new((0.5f + (x - 0.5f) * k) * s, (0.5f + (0.5f - y) * k) * s);
-            using var pen = new Pen(Color.White, 0.075f * s) { StartCap = LineCap.Round, EndCap = LineCap.Round };
-            PointF topLeft = P(0.22f, 0.74f), bottomRight = P(0.78f, 0.36f);
-            using (var screenPath = RoundedRect(RectangleF.FromLTRB(topLeft.X, topLeft.Y, bottomRight.X, bottomRight.Y), 0.05f * s))
-                g.DrawPath(pen, screenPath);
-            g.DrawLine(pen, P(0.40f, 0.25f), P(0.60f, 0.25f));
-
-            // Cubic control points at 4/3 of the height give a peak of exactly the height.
-            PointF c = P(0.5f, 0.55f);
-            float w = P(0.67f, 0).X - c.X, h = c.Y - P(0, 0.65f).Y;
-            using var eye = new GraphicsPath();
-            eye.AddBezier(new PointF(c.X - w, c.Y), new PointF(c.X - w / 2, c.Y - h * 4 / 3),
-                          new PointF(c.X + w / 2, c.Y - h * 4 / 3), new PointF(c.X + w, c.Y));
-            eye.AddBezier(new PointF(c.X + w, c.Y), new PointF(c.X + w / 2, c.Y + h * 4 / 3),
-                          new PointF(c.X - w / 2, c.Y + h * 4 / 3), new PointF(c.X - w, c.Y));
-            eye.CloseFigure();
-            g.FillPath(Brushes.White, eye);
-            // The pupil takes the tile's color, so it stays visible on the red tile too.
-            float r = 0.075f * s * k;
-            using (var pupil = new SolidBrush(bottom))
-                g.FillEllipse(pupil, c.X - r, c.Y - r, r * 2, r * 2);
+            // The Mac drawing is 22 by 16 points; the tray is square, so fit
+            // the width and center it vertically.
+            float u = size / 22f;
+            g.ScaleTransform(u, u);
+            g.TranslateTransform(0, 3);
+            using var brush = new SolidBrush(ink);
+            var screenRect = new RectangleF(1.6f, 1.4f, 18.8f, 11f);
+            if (filled)
+            {
+                // Even-odd fill leaves the eye as a hole in the screen.
+                using var fill = RoundedRect(screenRect, 2);
+                fill.FillMode = FillMode.Alternate;
+                using (var eye = EyePath(new PointF(11, 6.9f), 5.4f, 3.1f))
+                    fill.AddPath(eye, false);
+                g.FillPath(brush, fill);
+                g.FillEllipse(brush, 11 - 1.6f, 6.9f - 1.6f, 3.2f, 3.2f);
+            }
+            using (var pen = new Pen(ink, 1.3f))
+            using (var outline = RoundedRect(screenRect, 2))
+                g.DrawPath(pen, outline);
+            using (var pen = new Pen(ink, 1.4f) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+                g.DrawLine(pen, 8, 15, 14, 15);
+        }
+        // No room to widen a square tray icon as the Mac does, so the dot sits on
+        // the screen's top-right corner with a clear gap around it.
+        if (dot)
+        {
+            float u = size / 22f, r = 3.5f * u, gap = r + 1.2f * u;
+            float cx = size - r, cy = r;
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float d = MathF.Sqrt((x + 0.5f - cx) * (x + 0.5f - cx) + (y + 0.5f - cy) * (y + 0.5f - cy));
+                    float keep = Math.Clamp(d - gap + 0.5f, 0, 1);
+                    float dotCover = Math.Clamp(r - d + 0.5f, 0, 1);
+                    var p = bitmap.GetPixel(x, y);
+                    // Dot over a cleared background, so only the dot's own edge blends.
+                    float a = p.A / 255f * keep;
+                    float outA = dotCover + a * (1 - dotCover);
+                    if (outA <= 0) { bitmap.SetPixel(x, y, Color.Transparent); continue; }
+                    int Mix(int dc, int pc) => (int)Math.Round((dc * dotCover + pc * a * (1 - dotCover)) / outA);
+                    bitmap.SetPixel(x, y, Color.FromArgb((int)Math.Round(outA * 255),
+                        Mix(Orange.R, p.R), Mix(Orange.G, p.G), Mix(Orange.B, p.B)));
+                }
         }
         nint handle = bitmap.GetHicon();
         try
@@ -324,6 +350,18 @@ static class TrayIcons
         {
             Native.DestroyIcon(handle);
         }
+    }
+
+    static GraphicsPath EyePath(PointF c, float w, float h)
+    {
+        // Cubic control points at 4/3 of the height give a peak of exactly h.
+        var eye = new GraphicsPath();
+        eye.AddBezier(new PointF(c.X - w, c.Y), new PointF(c.X - w / 2, c.Y - h * 4 / 3),
+                      new PointF(c.X + w / 2, c.Y - h * 4 / 3), new PointF(c.X + w, c.Y));
+        eye.AddBezier(new PointF(c.X + w, c.Y), new PointF(c.X + w / 2, c.Y + h * 4 / 3),
+                      new PointF(c.X - w / 2, c.Y + h * 4 / 3), new PointF(c.X - w, c.Y));
+        eye.CloseFigure();
+        return eye;
     }
 
     static GraphicsPath RoundedRect(RectangleF r, float radius)

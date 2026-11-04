@@ -17,10 +17,10 @@ Installers:
 - Architecture: x64
   InstallerUrl: https://github.com/abhichandra21/Blindspot-Windows/releases/download/v0.1.3/Blindspot-win-x64.msi
   InstallerSha256: 7FE1CB7366811AA55EF133FD1585BF17CF79368CCAF371A5089247F72BE8FD95
-  ProductCode: '{PRODUCT-CODE-X64}'
+  ProductCode: '{DC99AFB2-8367-4981-9C0E-D2A68FDE0EEF}'
 - Architecture: arm64
   InstallerUrl: https://github.com/abhichandra21/Blindspot-Windows/releases/download/v0.1.3/Blindspot-win-arm64.msi
   InstallerSha256: 18952F6BE701F5D550CB771D3E679161A5A19B67F9F27D9401938AE61E661F1A
-  ProductCode: '{PRODUCT-CODE-ARM64}'
+  ProductCode: '{565C78E6-C35C-46B7-85B0-DFD85A295BF3}'
 ManifestType: installer
 ManifestVersion: 1.12.0

@@ -99,7 +99,7 @@ sealed class SettingsForm : Form
             new Card(theme, "Start at login", "Opens Blindspot automatically when you sign in to Windows.", SwitchRow.For(login, theme), CardWidth),
             new Card(theme, "Warning sound", "Plays a short sound when a Teams chat may be visible in your share.", sound, CardWidth),
             testCard,
-            Note("Click the tray shield for status and the pause switch. Right-click it for a quick menu."),
+            Note("Click the tray icon for status and the pause switch. Right-click it for a quick menu."),
             errorLabel);
 
         var tabSwitches = Detection.AllRiskyTabs.ToDictionary(tab => tab, tab => new ToggleSwitch { On = settings.RiskyTabs.Contains(tab) });

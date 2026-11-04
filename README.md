@@ -6,7 +6,7 @@ It is the Windows version of [Blindspot for Mac](https://github.com/abhichandra2
 If a Teams Chat or Activity window is on the screen you share, everyone in the meeting can read it.
 Blindspot checks about once a second, so it notices within a second or so, then:
 
-- plays a warning sound and turns its tray shield red,
+- plays a warning sound and turns its tray icon red,
 - shows a red banner on a screen you are *not* sharing,
 - and, if you turn on minimizing, minimizes those Teams windows when you share a whole screen.
 
@@ -20,7 +20,7 @@ Needs Windows 10 or 11 and the new Microsoft Teams.
    Windows may say **Windows protected your PC**, because the app is not code-signed.
    Click **More info**, then **Run anyway**.
 3. Blindspot installs for your user only, so it needs no admin rights.
-   It starts when the install finishes; look for the blue shield in the tray.
+   It starts when the install finishes; look for the blue screen-with-an-eye icon in the tray.
    If it's hidden, click the **^** arrow next to the clock and drag it onto the taskbar.
 4. To open it at sign-in, turn on **Start at login** in **Settings > General**.
 
@@ -32,7 +32,7 @@ Put it in a folder you keep, since Start at login remembers where it is.
 
 ## Use it
 
-- **Click** the shield to open the Blindspot panel: what it sees right now, a switch to pause or resume checks, Settings and Quit.
+- **Click** the icon to open the Blindspot panel: what it sees right now, a switch to pause or resume checks, Settings and Quit.
   It follows the Windows light or dark mode.
 - **Right-click** for a quick menu with the same actions.
 - Minimizing is off until you turn it on in **Settings > Detection**.
@@ -40,11 +40,11 @@ Put it in a folder you keep, since Start at login remembers where it is.
   It shows the banner and sound with sample text for a few seconds and never minimizes anything.
   It works only while checks are running and no Teams share is detected.
 
-## What the shield says
+## What the icon says
 
-Click the shield, hold the pointer over it, or right-click it to read its status.
+Click the icon, hold the pointer over it, or right-click it to read its status.
 
-| Status | Shield |
+| Status | Icon |
 |---|---|
 | Paused | Gray |
 | Checks disabled: no Teams tabs selected | Gray |

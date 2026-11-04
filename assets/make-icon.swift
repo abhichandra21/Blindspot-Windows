@@ -6,7 +6,7 @@ import AppKit
 
 let output = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "assets/Blindspot.ico")
 
-// A blue tile, a white shield, and a red dot: the spot that may be exposed.
+// A blue tile with a white display and an eye on it; the red pupil is the spot that may be exposed.
 // Coordinates are fractions of the canvas, with the origin at the bottom left.
 func drawIcon(size pixels: Int) -> Data {
     let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: pixels, pixelsHigh: pixels,
@@ -15,12 +15,12 @@ func drawIcon(size pixels: Int) -> Data {
     NSGraphicsContext.saveGraphicsState()
     NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
     let s = CGFloat(pixels)
-    // At the smallest sizes the shield is drawn larger so its shape survives.
+    // At the smallest sizes the drawing is larger so its shape survives.
     let tiny = pixels <= 24
     let margin: CGFloat = tiny ? 0.0 : 0.04
-    let shieldScale: CGFloat = tiny ? 1.25 : 1.1
+    let drawScale: CGFloat = tiny ? 1.25 : 1.1
     func p(_ x: CGFloat, _ y: CGFloat) -> NSPoint {
-        NSPoint(x: (0.5 + (x - 0.5) * shieldScale) * s, y: (0.5 + (y - 0.5) * shieldScale) * s)
+        NSPoint(x: (0.5 + (x - 0.5) * drawScale) * s, y: (0.5 + (y - 0.5) * drawScale) * s)
     }
 
     let tile = NSRect(x: margin * s, y: margin * s, width: (1 - 2 * margin) * s, height: (1 - 2 * margin) * s)
@@ -29,24 +29,37 @@ func drawIcon(size pixels: Int) -> Data {
                ending: NSColor(srgbRed: 0.09, green: 0.23, blue: 0.62, alpha: 1))!
         .draw(in: tilePath, angle: -90)
 
-    let shield = NSBezierPath()
-    shield.move(to: p(0.5, 0.78))
-    shield.curve(to: p(0.74, 0.70), controlPoint1: p(0.58, 0.74), controlPoint2: p(0.66, 0.71))
-    shield.line(to: p(0.74, 0.52))
-    shield.curve(to: p(0.5, 0.20), controlPoint1: p(0.74, 0.36), controlPoint2: p(0.62, 0.26))
-    shield.curve(to: p(0.26, 0.52), controlPoint1: p(0.38, 0.26), controlPoint2: p(0.26, 0.36))
-    shield.line(to: p(0.26, 0.70))
-    shield.curve(to: p(0.5, 0.78), controlPoint1: p(0.34, 0.71), controlPoint2: p(0.42, 0.74))
-    shield.close()
-    NSColor.white.setFill()
-    shield.fill()
+    // A white display with an eye on it, like the tray icon. The red pupil
+    // is the spot that may be exposed.
+    let line = (tiny ? 0.075 : 0.045) * s
+    NSColor.white.set()
+    let screen = NSBezierPath(roundedRect: NSRect(x: p(0.22, 0.36).x, y: p(0.22, 0.36).y,
+                                                  width: p(0.78, 0).x - p(0.22, 0).x,
+                                                  height: p(0, 0.74).y - p(0, 0.36).y),
+                              xRadius: 0.05 * s, yRadius: 0.05 * s)
+    screen.lineWidth = line
+    screen.stroke()
+    let stand = NSBezierPath()
+    stand.move(to: p(0.40, 0.25))
+    stand.line(to: p(0.60, 0.25))
+    stand.lineWidth = line
+    stand.lineCapStyle = .round
+    stand.stroke()
 
-    // A larger dot at the smallest sizes, so it stays visible.
-    let radius = (tiny ? 0.11 * shieldScale : pixels <= 32 ? 0.12 : 0.10 * shieldScale) * s
-    let center = p(0.5, 0.50)
+    // Cubic control points at 4/3 of the height give a peak of exactly the height.
+    let c = p(0.5, 0.55), w = p(0.67, 0).x - c.x, h = p(0, 0.65).y - c.y
+    let eye = NSBezierPath()
+    eye.move(to: NSPoint(x: c.x - w, y: c.y))
+    eye.curve(to: NSPoint(x: c.x + w, y: c.y), controlPoint1: NSPoint(x: c.x - w / 2, y: c.y + h * 4 / 3),
+              controlPoint2: NSPoint(x: c.x + w / 2, y: c.y + h * 4 / 3))
+    eye.curve(to: NSPoint(x: c.x - w, y: c.y), controlPoint1: NSPoint(x: c.x + w / 2, y: c.y - h * 4 / 3),
+              controlPoint2: NSPoint(x: c.x - w / 2, y: c.y - h * 4 / 3))
+    eye.fill()
+
+    // A larger pupil at the smallest sizes, so it stays visible.
+    let radius = (tiny ? 0.075 : pixels <= 32 ? 0.065 : 0.055) * s * drawScale
     NSColor(srgbRed: 0.90, green: 0.18, blue: 0.15, alpha: 1).setFill()
-    NSBezierPath(ovalIn: NSRect(x: center.x - radius, y: center.y - radius,
-                                width: radius * 2, height: radius * 2)).fill()
+    NSBezierPath(ovalIn: NSRect(x: c.x - radius, y: c.y - radius, width: radius * 2, height: radius * 2)).fill()
 
     NSGraphicsContext.restoreGraphicsState()
     return rep.representation(using: .png, properties: [:])!

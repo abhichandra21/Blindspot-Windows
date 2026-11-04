@@ -226,10 +226,10 @@ If every screen overlaps the shared area, skip the banner.
 
 | State | Icon | 
 |---|---|
-| Running, nothing wrong | Filled shield |
-| Paused or checks disabled | Outline shield |
-| Observation failed | Orange shield |
-| Chat exposed | Red shield |
+| Running, nothing wrong | Blue display with an eye |
+| Paused or checks disabled | Gray display with an eye |
+| Observation failed | Orange display with an eye |
+| Chat exposed | Red display with an eye |
 
 Show the status text as the tray tooltip (Windows limits it to about 127 characters) and as the first, disabled line of the right-click menu.
 

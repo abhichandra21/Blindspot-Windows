@@ -226,10 +226,13 @@ If every screen overlaps the shared area, skip the banner.
 
 | State | Icon | 
 |---|---|
-| Running, nothing wrong | Blue display with an eye |
-| Paused or checks disabled | Gray display with an eye |
-| Observation failed | Orange display with an eye |
-| Chat exposed | Red display with an eye |
+| Running, nothing wrong | Filled screen with an eye cut out |
+| Paused or checks disabled | Empty screen |
+| Observation failed | Empty screen, orange dot |
+| Chat exposed | Red filled screen |
+
+The outline never changes, so every state reads as the same app.
+It uses the taskbar text color (dark on a light taskbar, white on a dark one); only the red warning and the orange dot are colored.
 
 Show the status text as the tray tooltip (Windows limits it to about 127 characters) and as the first, disabled line of the right-click menu.
 
@@ -301,7 +304,7 @@ A unit test passing is not proof. Check these with a real Teams share (a solo "M
 - [ ] Minimizing on, whole-screen share: Chat window minimizes; restore it and it minimizes again on the next check.
 - [ ] Minimizing on, window share: warns but never minimizes.
 - [ ] One screen only: no banner; sound and red icon still work.
-- [ ] Pause: icon goes to outline and warnings stop.
+- [ ] Pause: icon goes to an empty screen and warnings stop.
 - [ ] Mixed DPI monitors (laptop screen plus external): banner lands on the right screen and detection still matches.
 - [ ] Start at login works after a reboot, and turning it off removes it.
 - [ ] Moving the exe to a new folder: Start at login still points to the right place, or clearly shows it needs fixing.
